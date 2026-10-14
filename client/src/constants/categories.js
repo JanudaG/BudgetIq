@@ -15,3 +15,10 @@ export const CATEGORIES = [
 ]
 
 export const PAYMENT_ACCOUNTS = ['Chase ••4821', 'Amex ••1002', 'Capital One']
+
+export const ENVELOPE_GROUPS = [
+  { name: 'Fixed Essentials', description: 'Non-discretionary obligations & recurring commitments' },
+  { name: 'Variable Lifestyle', description: 'Daily lifestyle, culinary, and transport categories' },
+  { name: 'Tech & SaaS', description: 'Cloud, software & entertainment services' },
+  { name: 'Savings & Wealth', description: 'Travel funds and long-term sinking goals' },
+]

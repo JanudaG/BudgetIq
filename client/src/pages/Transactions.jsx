@@ -1,5 +1,6 @@
 import { useState } from "react";
 import CategoryIcon from "../components/common/CategoryIcon.jsx";
+import StatCard from "../components/common/StatCard.jsx";
 import {
   IconAnalytics,
   IconTrendUp,
@@ -11,27 +12,6 @@ import { MONTHLY } from "../constants/mockData.js";
 import { formatCurrency, formatDate } from "../utils/format.js";
 
 const total = (list) => list.reduce((sum, t) => sum + t.amount, 0);
-
-// A small reusable tile. Defined OUTSIDE Transactions (the lint rule from before).
-function StatCard({
-  label,
-  icon,
-  iconClass,
-  value,
-  valueClass = "",
-  children,
-}) {
-  return (
-    <div className="stat">
-      <div className="stat__top">
-        <span className="stat__label">{label}</span>
-        <span className={`stat__icon ${iconClass}`}>{icon}</span>
-      </div>
-      <p className={`stat__value ${valueClass}`}>{value}</p>
-      <div className="stat__foot">{children}</div>
-    </div>
-  );
-}
 
 function Transactions({ transactions, onDeleteTransaction, onNavigate }) {
   const [query, setQuery] = useState("");
@@ -46,7 +26,9 @@ function Transactions({ transactions, onDeleteTransaction, onNavigate }) {
   const spendingPercent = Math.round((expenses / MONTHLY.spendingCap) * 100);
 
   // ---- Dropdown options come from the data itself ----
-  const accounts = [...new Set(transactions.map((t) => t.account))];
+  const accounts = [...new Set(transactions.map((t) => t.account))].filter(
+    Boolean,
+  );
   const categories = [...new Set(transactions.map((t) => t.category))];
 
   // ---- Table rows: every filter must pass ----
