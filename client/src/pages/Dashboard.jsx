@@ -126,7 +126,7 @@ function Dashboard({ transactions, envelopes, onAddTransaction, onNavigate }) {
           </div>
 
           <div className="envelope-grid">
-            {envelopes.map((env) => (
+            {envelopes.slice(0, 4).map((env) => (
               <EnvelopeCard
                 key={env.id}
                 category={env.category}

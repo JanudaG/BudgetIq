@@ -13,10 +13,14 @@
 // Note there is NO `spent` field here: how much has been spent is
 // calculated from the transactions, so it can never get out of sync.
 export const initialEnvelopes = [
-  { id: 'housing', category: 'Housing & Utilities', subtitle: 'Fixed Recurring', limit: 2500 },
-  { id: 'food', category: 'Food & Dining', subtitle: 'Variable Lifestyle', limit: 1200 },
-  { id: 'transport', category: 'Transportation', subtitle: 'Fuel & Transit', limit: 500 },
-  { id: 'tech', category: 'Tech & Media', subtitle: 'SaaS & Services', limit: 250 },
+  { id: 'housing', category: 'Housing & Utilities', group: 'Fixed Essentials', subtitle: 'Fixed Recurring', limit: 2500, rollover: false },
+  { id: 'food', category: 'Food & Dining', group: 'Variable Lifestyle', subtitle: 'Variable Lifestyle', limit: 1200, rollover: true },
+  { id: 'transport', category: 'Transportation', group: 'Variable Lifestyle', subtitle: 'Fuel & Transit', limit: 500, rollover: true },
+  { id: 'tech', category: 'Tech & Media', group: 'Tech & SaaS', subtitle: 'SaaS & Services', limit: 250, rollover: false },
+  { id: 'insurance', category: 'Insurance', group: 'Fixed Essentials', subtitle: 'Policies & Premiums', limit: 600, rollover: false },
+  { id: 'health', category: 'Health & Wellness', group: 'Fixed Essentials', subtitle: 'Gym & Care', limit: 400, rollover: false },
+  { id: 'shopping', category: 'Shopping', group: 'Variable Lifestyle', subtitle: 'Retail & Lifestyle', limit: 800, rollover: false },
+  { id: 'travel', category: 'Travel', group: 'Savings & Wealth', subtitle: 'Sinking Fund', limit: 1000, rollover: true },
 ]
 
 export const initialTransactions = [
