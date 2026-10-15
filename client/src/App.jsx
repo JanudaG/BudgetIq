@@ -1,6 +1,7 @@
 import { useState } from "react";
 import AppLayout from "./components/layout/AppLayout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
+import Transactions from "./pages/Transactions.jsx";
 import { initialTransactions, initialEnvelopes } from "./constants/mockData.js";
 import "./App.css";
 
@@ -12,7 +13,7 @@ function ComingSoon() {
 const PAGES = {
   dashboard: Dashboard,
   budget: ComingSoon,
-  transactions: ComingSoon,
+  transactions: Transactions,
   analytics: ComingSoon,
   accounts: ComingSoon,
   settings: ComingSoon,
@@ -28,7 +29,11 @@ function App() {
 
   function addTransaction(newTransaction) {
     // New array (never push onto the old one) so React sees the change.
+
     setTransactions((prev) => [{ ...newTransaction, id: Date.now() }, ...prev]);
+  }
+  function deleteTransaction(id) {
+    setTransactions((prev) => prev.filter((t) => t.id !== id));
   }
 
   const ActivePage = PAGES[activeLink] || ComingSoon;
@@ -37,6 +42,7 @@ function App() {
     <AppLayout activeLink={activeLink} onNavigate={setActiveLink}>
       <ActivePage
         transactions={transactions}
+        onDeleteTransaction={deleteTransaction}
         envelopes={envelopes}
         onAddTransaction={addTransaction}
         onNavigate={setActiveLink}
