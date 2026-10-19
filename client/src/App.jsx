@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AppLayout from "./components/layout/AppLayout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Transactions from "./pages/Transactions.jsx";
-import { initialTransactions, initialEnvelopes } from "./constants/mockData.js";
-import Budget from './pages/Budget.jsx'
+
+import { api } from "./api/api.js";
+import Budget from "./pages/Budget.jsx";
 import "./App.css";
 
 function ComingSoon() {
@@ -25,29 +26,51 @@ function App() {
 
   // Shared data lives here, in the closest common parent, so every page
   // (and later the Transactions and Budget pages) sees the same data.
-  const [transactions, setTransactions] = useState(initialTransactions);
-  const [envelopes, setEnvelopes] = useState(initialEnvelopes); // no setter yet: limits become editable on the Budget page
+  const [transactions, setTransactions] = useState([]);
+  const [envelopes, setEnvelopes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  function addTransaction(newTransaction) {
-    // New array (never push onto the old one) so React sees the change.
+  useEffect(() => {
+    Promise.all([api.getTransactions(), api.getEnvelopes()])
+      .then(([t, e]) => {
+        setTransactions(t);
+        setEnvelopes(e);
+      })
+      .catch(() => setError("Could not reach the server. Is it running?"))
+      .finally(() => setLoading(false));
+  }, []); // no setter yet: limits become editable on the Budget page
 
-    setTransactions((prev) => [{ ...newTransaction, id: Date.now() }, ...prev]);
+  async function addTransaction(newTransaction) {
+    const saved = await api.createTransaction(newTransaction); // wait for the server's copy (it has the real id)
+    setTransactions((prev) => [saved, ...prev]);
   }
-  function deleteTransaction(id) {
+
+  async function deleteTransaction(id) {
+    await api.deleteTransaction(id);
     setTransactions((prev) => prev.filter((t) => t.id !== id));
   }
-  function addEnvelope(newEnvelope) {
-    setEnvelopes((prev) => [...prev, { ...newEnvelope, id: Date.now() }]);
+
+  async function addEnvelope(newEnvelope) {
+    const saved = await api.createEnvelope(newEnvelope);
+    setEnvelopes((prev) => [...prev, saved]);
   }
 
-  function updateEnvelope(id, changes) {
-  // `changes` is an object like { limit: 800 } or { rollover: true }.
-  setEnvelopes((prev) => prev.map((e) => (e.id === id ? { ...e, ...changes } : e)))
-}
+  async function updateEnvelope(id, changes) {
+    // Update the screen first so typing in the limit box feels instant, then save.
+    setEnvelopes((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, ...changes } : e)),
+    );
+    await api.updateEnvelope(id, changes);
+  }
 
-  function deleteEnvelope(id) {
+  async function deleteEnvelope(id) {
+    await api.deleteEnvelope(id);
     setEnvelopes((prev) => prev.filter((e) => e.id !== id));
   }
+
+  if (loading) return <p className="app-status">Loading your budget...</p>;
+  if (error) return <p className="app-status">{error}</p>;
 
   const ActivePage = PAGES[activeLink] || ComingSoon;
 

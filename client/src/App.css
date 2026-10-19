@@ -1234,3 +1234,9 @@ a {
 .split__seg--3 {
   background: var(--blue-bar);
 }
+
+.app-status {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--muted);
+}

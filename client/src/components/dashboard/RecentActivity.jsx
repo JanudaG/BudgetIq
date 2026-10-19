@@ -1,11 +1,9 @@
-import { IconArrowRight } from '../common/Icon.jsx'
-import { formatCurrency, formatShortDate } from '../../utils/format.js'
-import CategoryIcon from '../common/CategoryIcon.jsx'
+import { IconArrowRight } from "../common/Icon.jsx";
+import { formatCurrency, formatShortDate } from "../../utils/format.js";
+import CategoryIcon from "../common/CategoryIcon.jsx";
 
 function RecentActivity({ transactions, onViewAll }) {
-  // Newest-logged first. Copy before sorting: .sort() mutates, and props
-  // (and state) must never be mutated.
-  const recent = [...transactions].sort((a, b) => b.id - a.id).slice(0, 5)
+  const recent = transactions.slice(0, 5);
 
   return (
     <section className="card">
@@ -16,11 +14,13 @@ function RecentActivity({ transactions, onViewAll }) {
 
       <ul className="activity-list">
         {recent.map((t) => {
-          const isIncome = t.type === 'income'
+          const isIncome = t.type === "income";
           return (
             <li className="activity-item" key={t.id}>
               <div className="activity-item__left">
-                <span className={`activity-item__icon${isIncome ? ' is-income' : ''}`}>
+                <span
+                  className={`activity-item__icon${isIncome ? " is-income" : ""}`}
+                >
                   <CategoryIcon category={t.category} size={20} />
                 </span>
                 <div>
@@ -31,23 +31,31 @@ function RecentActivity({ transactions, onViewAll }) {
                 </div>
               </div>
               <div className="activity-item__right">
-                <p className={`activity-item__amount${isIncome ? ' is-income' : ''}`}>
-                  {isIncome ? '+' : '-'}
+                <p
+                  className={`activity-item__amount${isIncome ? " is-income" : ""}`}
+                >
+                  {isIncome ? "+" : "-"}
                   {formatCurrency(t.amount)}
                 </p>
-                <p className="activity-item__meta">{isIncome ? 'Cleared' : t.account}</p>
+                <p className="activity-item__meta">
+                  {isIncome ? "Cleared" : t.account}
+                </p>
               </div>
             </li>
-          )
+          );
         })}
       </ul>
 
-      <button type="button" className="link-btn link-btn--footer" onClick={onViewAll}>
+      <button
+        type="button"
+        className="link-btn link-btn--footer"
+        onClick={onViewAll}
+      >
         View all transactions in ledger
         <IconArrowRight size={16} />
       </button>
     </section>
-  )
+  );
 }
 
-export default RecentActivity
+export default RecentActivity;
