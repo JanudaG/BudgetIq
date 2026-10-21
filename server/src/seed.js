@@ -1,17 +1,66 @@
 import 'dotenv/config'
 import mongoose from 'mongoose'
+import User from './models/User.js'
 import Transaction from './models/Transaction.js'
 import Envelope from './models/Envelope.js'
-import { initialTransactions, initialEnvelopes } from '../../client/src/constants/mockData.js'
+import {
+  initialTransactions,
+  initialEnvelopes,
+} from '../../client/src/constants/mockData.js'
 
-await mongoose.connect(process.env.MONGO_URI)
+try {
+  await mongoose.connect(process.env.MONGO_URI)
 
-await Transaction.deleteMany({})
-await Envelope.deleteMany({})
+  const email = process.env.SEED_USER_EMAIL
 
-// Remove the fake ids from the sample data. MongoDB makes its own.
-await Transaction.insertMany(initialTransactions.map(({ id, ...rest }) => rest))
-await Envelope.insertMany(initialEnvelopes.map(({ id, ...rest }) => rest))
+  if (!email) {
+    throw new Error('SEED_USER_EMAIL is required.')
+  }
 
-console.log(`Seeded ${initialTransactions.length} transactions and ${initialEnvelopes.length} envelopes`)
-await mongoose.disconnect()
+  const user = await User.findOne({
+    email: email.toLowerCase(),
+  })
+
+  if (!user) {
+    throw new Error('Seed user not found. Register first.')
+  }
+
+  const transactionCount = await Transaction.countDocuments({
+    userId: user._id,
+  })
+
+  const envelopeCount = await Envelope.countDocuments({
+    userId: user._id,
+  })
+
+  if (transactionCount === 0) {
+    await Transaction.insertMany(
+      initialTransactions.map(({ id, ...rest }) => ({
+        ...rest,
+        userId: user._id,
+      }))
+    )
+    console.log('Demo transactions inserted.')
+  } else {
+    console.log('Transactions already exist. Skipping.')
+  }
+
+  if (envelopeCount === 0) {
+    await Envelope.insertMany(
+      initialEnvelopes.map(({ id, ...rest }) => ({
+        ...rest,
+        userId: user._id,
+      }))
+    )
+    console.log('Demo envelopes inserted.')
+  } else {
+    console.log('Envelopes already exist. Skipping.')
+  }
+
+  console.log('Seeding completed.')
+} catch (err) {
+  console.error('Seeding failed:', err.message)
+  process.exitCode = 1
+} finally {
+  await mongoose.disconnect()
+}

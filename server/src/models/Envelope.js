@@ -2,7 +2,13 @@ import mongoose from 'mongoose'
 
 const envelopeSchema = new mongoose.Schema(
   {
-    category: { type: String, required: true, unique: true },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      index: true,
+    },
+    category: { type: String, required: true },
     group: { type: String, required: true },
     subtitle: { type: String, default: '' },
     limit: { type: Number, required: true, min: 0 },
@@ -10,6 +16,12 @@ const envelopeSchema = new mongoose.Schema(
   },
   { timestamps: true },
 )
+
+envelopeSchema.index(
+  { userId: 1, category: 1 },
+  { unique: true }
+)
+
 
 envelopeSchema.set('toJSON', {
   transform: (doc, ret) => {

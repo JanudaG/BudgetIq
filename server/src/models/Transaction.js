@@ -1,13 +1,25 @@
 import mongoose from 'mongoose'
 
 const transactionSchema = new mongoose.Schema(
+  
   {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      index: true,
+    },
+
     name: { type: String, required: true, trim: true },
     category: { type: String, required: true },
     account: { type: String, default: null },
-    type: { type: String, enum: ['income', 'expense'], required: true },
+    type: {
+      type: String,
+      enum: ['income', 'expense'],
+      required: true,
+    },
     amount: { type: Number, required: true, min: 0 },
-    date: { type: String, required: true }, // 'YYYY-MM-DD', same format the React app uses
+    date: { type: String, required: true },
   },
   { timestamps: true },
 )
