@@ -45,6 +45,11 @@ function App() {
     const saved = await api.createTransaction(newTransaction); // wait for the server's copy (it has the real id)
     setTransactions((prev) => [saved, ...prev]);
   }
+  async function updateTransaction(id, changes) {
+    const updated = await api.updateTransaction(id, changes);
+
+    setTransactions((prev) => prev.map((t) => (t.id === id ? updated : t)));
+  }
 
   async function deleteTransaction(id) {
     await api.deleteTransaction(id);
@@ -79,6 +84,7 @@ function App() {
       <ActivePage
         transactions={transactions}
         onDeleteTransaction={deleteTransaction}
+        onUpdateTransaction={updateTransaction}
         envelopes={envelopes}
         onAddTransaction={addTransaction}
         onNavigate={setActiveLink}

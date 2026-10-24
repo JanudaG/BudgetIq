@@ -13,11 +13,20 @@ import { formatCurrency, formatDate } from "../utils/format.js";
 
 const total = (list) => list.reduce((sum, t) => sum + t.amount, 0);
 
-function Transactions({ transactions, onDeleteTransaction, onNavigate }) {
+function Transactions({
+  transactions,
+  onDeleteTransaction,
+  onUpdateTransaction,
+  onNavigate,
+}) {
   const [query, setQuery] = useState("");
   const [account, setAccount] = useState("all");
   const [category, setCategory] = useState("all");
   const [type, setType] = useState("all");
+  const [editingTransaction, setEditingTransaction] = useState(null);
+  const [editError, setEditError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [sortBy, setSortBy] = useState("newest");
 
   // ---- Stat strip: derived from ALL transactions, like the Dashboard ----
   const income = total(transactions.filter((t) => t.type === "income"));
@@ -43,11 +52,90 @@ function Transactions({ transactions, onDeleteTransaction, onNavigate }) {
     );
   });
 
+  const sortedTransactions = [...visible].sort((a, b) => {
+    switch (sortBy) {
+      case "newest":
+        return b.date.localeCompare(a.date);
+
+      case "oldest":
+        return a.date.localeCompare(b.date);
+
+      case "highest":
+        return b.amount - a.amount;
+
+      case "lowest":
+        return a.amount - b.amount;
+
+      case "name":
+        return a.name.localeCompare(b.name);
+
+      default:
+        return 0;
+    }
+  });
+
   function clearFilters() {
     setQuery("");
     setAccount("all");
     setCategory("all");
     setType("all");
+    setSortBy("newest");
+  }
+  function startEditing(transaction) {
+    setEditingTransaction({ ...transaction });
+    setEditError("");
+  }
+
+  async function saveEdit(event) {
+    event.preventDefault();
+
+    if (!editingTransaction) return;
+
+    const amount = Number(editingTransaction.amount);
+
+    if (
+      !editingTransaction.name.trim() ||
+      !editingTransaction.category.trim() ||
+      !Number.isFinite(amount) ||
+      amount <= 0
+    ) {
+      setEditError("Please enter a valid name, category and amount.");
+      return;
+    }
+
+    setSaving(true);
+    setEditError("");
+
+    try {
+      await onUpdateTransaction(editingTransaction.id, {
+        name: editingTransaction.name.trim(),
+        category: editingTransaction.category.trim(),
+        account: editingTransaction.account,
+        type: editingTransaction.type,
+        amount,
+        date: editingTransaction.date,
+      });
+
+      setEditingTransaction(null);
+    } catch (error) {
+      setEditError(error.message || "Failed to update transaction.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(transaction) {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${transaction.name}"?\n\nThis action cannot be undone.`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await onDeleteTransaction(transaction.id);
+    } catch (error) {
+      window.alert(error.message || "Failed to delete transaction.");
+    }
   }
 
   return (
@@ -160,7 +248,17 @@ function Transactions({ transactions, onDeleteTransaction, onNavigate }) {
             <option value="income">Income</option>
             <option value="expense">Expense</option>
           </select>
-
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            aria-label="Sort transactions"
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="highest">Amount: High to Low</option>
+            <option value="lowest">Amount: Low to High</option>
+            <option value="name">Name: A to Z</option>
+          </select>
           <button type="button" className="link-btn" onClick={clearFilters}>
             Clear Filters
           </button>
@@ -181,7 +279,7 @@ function Transactions({ transactions, onDeleteTransaction, onNavigate }) {
             </tr>
           </thead>
           <tbody>
-            {visible.map((t) => (
+            {sortedTransactions.map((t) => (
               <tr key={t.id}>
                 <td>{formatDate(t.date)}</td>
                 <td className="ledger__name">{t.name}</td>
@@ -199,10 +297,13 @@ function Transactions({ transactions, onDeleteTransaction, onNavigate }) {
                   {formatCurrency(t.amount)}
                 </td>
                 <td>
+                  <button type="button" onClick={() => startEditing(t)}>
+                    Edit
+                  </button>
                   <button
                     type="button"
                     className="ledger__delete"
-                    onClick={() => onDeleteTransaction(t.id)}
+                    onClick={() => handleDelete(t)}
                   >
                     Delete
                   </button>
@@ -216,6 +317,122 @@ function Transactions({ transactions, onDeleteTransaction, onNavigate }) {
           <p className="ledger__empty">No transactions match your filters.</p>
         )}
       </section>
+
+      {editingTransaction && (
+        <section
+          className="card"
+          style={{ padding: "24px", marginTop: "20px" }}
+        >
+          <h2>Edit Transaction</h2>
+
+          <form onSubmit={saveEdit}>
+            <label>
+              Description
+              <input
+                required
+                value={editingTransaction.name}
+                onChange={(e) =>
+                  setEditingTransaction({
+                    ...editingTransaction,
+                    name: e.target.value,
+                  })
+                }
+              />
+            </label>
+
+            <label>
+              Amount
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                required
+                value={editingTransaction.amount}
+                onChange={(e) =>
+                  setEditingTransaction({
+                    ...editingTransaction,
+                    amount: e.target.value,
+                  })
+                }
+              />
+            </label>
+
+            <label>
+              Category
+              <input
+                required
+                value={editingTransaction.category}
+                onChange={(e) =>
+                  setEditingTransaction({
+                    ...editingTransaction,
+                    category: e.target.value,
+                  })
+                }
+              />
+            </label>
+
+            <label>
+              Account
+              <input
+                value={editingTransaction.account ?? ""}
+                onChange={(e) =>
+                  setEditingTransaction({
+                    ...editingTransaction,
+                    account: e.target.value,
+                  })
+                }
+              />
+            </label>
+
+            <label>
+              Type
+              <select
+                value={editingTransaction.type}
+                onChange={(e) =>
+                  setEditingTransaction({
+                    ...editingTransaction,
+                    type: e.target.value,
+                  })
+                }
+              >
+                <option value="expense">Expense</option>
+                <option value="income">Income</option>
+              </select>
+            </label>
+
+            <label>
+              Date
+              <input
+                type="date"
+                required
+                value={editingTransaction.date}
+                onChange={(e) =>
+                  setEditingTransaction({
+                    ...editingTransaction,
+                    date: e.target.value,
+                  })
+                }
+              />
+            </label>
+
+            {editError && <p className="form-error">{editError}</p>}
+
+            <div style={{ display: "flex", gap: "12px", marginTop: "16px" }}>
+              <button type="submit" className="btn-dark" disabled={saving}>
+                {saving ? "Saving..." : "Save Changes"}
+              </button>
+
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => setEditingTransaction(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
     </>
   );
 }
