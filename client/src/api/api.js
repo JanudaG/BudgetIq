@@ -26,6 +26,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  register: (data) =>
+    request("/auth/register", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
   getMe: () => request("/auth/me"),
 
