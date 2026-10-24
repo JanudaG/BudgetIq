@@ -266,52 +266,53 @@ function Transactions({
             {visible.length} of {transactions.length} items shown
           </span>
         </div>
-
-        <table className="ledger">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Merchant / Description</th>
-              <th>Category</th>
-              <th>Account</th>
-              <th className="ledger__right">Amount</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {sortedTransactions.map((t) => (
-              <tr key={t.id}>
-                <td>{formatDate(t.date)}</td>
-                <td className="ledger__name">{t.name}</td>
-                <td>
-                  <span className="ledger__cat">
-                    <CategoryIcon category={t.category} size={16} />
-                    {t.category}
-                  </span>
-                </td>
-                <td>{t.account}</td>
-                <td
-                  className={`ledger__right ledger__amount${t.type === "income" ? " is-income" : ""}`}
-                >
-                  {t.type === "income" ? "+" : "-"}
-                  {formatCurrency(t.amount)}
-                </td>
-                <td>
-                  <button type="button" onClick={() => startEditing(t)}>
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="ledger__delete"
-                    onClick={() => handleDelete(t)}
-                  >
-                    Delete
-                  </button>
-                </td>
+        <div className="ledger-scroll">
+          <table className="ledger">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Merchant / Description</th>
+                <th>Category</th>
+                <th>Account</th>
+                <th className="ledger__right">Amount</th>
+                <th />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {sortedTransactions.map((t) => (
+                <tr key={t.id}>
+                  <td>{formatDate(t.date)}</td>
+                  <td className="ledger__name">{t.name}</td>
+                  <td>
+                    <span className="ledger__cat">
+                      <CategoryIcon category={t.category} size={16} />
+                      {t.category}
+                    </span>
+                  </td>
+                  <td>{t.account}</td>
+                  <td
+                    className={`ledger__right ledger__amount${t.type === "income" ? " is-income" : ""}`}
+                  >
+                    {t.type === "income" ? "+" : "-"}
+                    {formatCurrency(t.amount)}
+                  </td>
+                  <td>
+                    <button type="button" onClick={() => startEditing(t)}>
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="ledger__delete"
+                      onClick={() => handleDelete(t)}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         {visible.length === 0 && (
           <p className="ledger__empty">No transactions match your filters.</p>

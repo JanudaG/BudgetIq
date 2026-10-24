@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import {
   IconGrid,
   IconPie,
@@ -10,23 +12,31 @@ import {
   IconBell,
   IconCalendar,
   IconChevronDown,
-} from '../common/Icon.jsx'
-import { MONTHLY_TARGET } from '../../constants/mockData.js'
-import { formatCurrency } from '../../utils/format.js'
+} from "../common/Icon.jsx";
+import { MONTHLY_TARGET } from "../../constants/mockData.js";
+import { formatCurrency } from "../../utils/format.js";
 
 // The sidebar is described as data and rendered with .map(): adding a nav
 // item later is one new line here, not a copy-pasted block of JSX.
 const NAV_ITEMS = [
-  { key: 'dashboard', label: 'Overview', icon: IconGrid },
-  { key: 'budget', label: 'Budget Planner', icon: IconPie },
-  { key: 'transactions', label: 'Transactions & Ledger', icon: IconReceipt },
-  { key: 'analytics', label: 'Analytics & Insights', icon: IconAnalytics },
-  { key: 'accounts', label: 'Accounts & Cards', icon: IconCard },
-  { key: 'settings', label: 'Settings & Rules', icon: IconSliders },
-]
+  { key: "dashboard", label: "Overview", icon: IconGrid },
+  { key: "budget", label: "Budget Planner", icon: IconPie },
+  { key: "transactions", label: "Transactions & Ledger", icon: IconReceipt },
+  { key: "analytics", label: "Analytics & Insights", icon: IconAnalytics },
+  { key: "accounts", label: "Accounts & Cards", icon: IconCard },
+  { key: "settings", label: "Settings & Rules", icon: IconSliders },
+];
 
-function AppLayout({ children, activeLink, onNavigate }) {
-  const targetPercent = Math.round((MONTHLY_TARGET.used / MONTHLY_TARGET.cap) * 100)
+function AppLayout({ children, activeLink, onNavigate, user, onLogout }) {
+  const targetPercent = Math.round(
+    (MONTHLY_TARGET.used / MONTHLY_TARGET.cap) * 100,
+  );
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  function handleNavigation(page) {
+    onNavigate(page);
+    setMenuOpen(false);
+  }
 
   return (
     <div className="app-shell">
@@ -39,21 +49,34 @@ function AppLayout({ children, activeLink, onNavigate }) {
               <p className="brand__sub">Financial OS</p>
             </div>
           </div>
-
-          <nav className="nav">
+          <button
+            type="button"
+            className="mobile-menu-btn"
+            aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+            aria-expanded={menuOpen}
+            aria-controls="budgetiq-navigation"
+            onClick={() => setMenuOpen((prev) => !prev)}
+          >
+            {menuOpen ? "✕" : "☰"}
+          </button>
+          <nav
+            id="budgetiq-navigation"
+            className={`nav ${menuOpen ? "nav--open" : ""}`}
+            aria-label="Main navigation"
+          >
             {NAV_ITEMS.map((item) => {
-              const Icon = item.icon
+              const Icon = item.icon;
               return (
                 <a
                   key={item.key}
-                  className={`nav-item${activeLink === item.key ? ' active' : ''}`}
+                  className={`nav-item${activeLink === item.key ? " active" : ""}`}
                   href={`#${item.key}`}
-                  onClick={() => onNavigate(item.key)}
+                  onClick={() => handleNavigation(item.key)}
                 >
                   <Icon size={18} />
                   <span>{item.label}</span>
                 </a>
-              )
+              );
             })}
           </nav>
         </div>
@@ -64,12 +87,15 @@ function AppLayout({ children, activeLink, onNavigate }) {
             <span className="badge badge--success">{targetPercent}% used</span>
           </div>
           <div className="progress progress--thin">
-            <div className="progress__fill progress__fill--dark" style={{ width: `${targetPercent}%` }} />
+            <div
+              className="progress__fill progress__fill--dark"
+              style={{ width: `${targetPercent}%` }}
+            />
           </div>
           <div className="target__bottom">
             <span>
-              {formatCurrency(MONTHLY_TARGET.used).replace('.00', '')} /{' '}
-              {formatCurrency(MONTHLY_TARGET.cap).replace('.00', '')}
+              {formatCurrency(MONTHLY_TARGET.used).replace(".00", "")} /{" "}
+              {formatCurrency(MONTHLY_TARGET.cap).replace(".00", "")}
             </span>
             <span className="target__link">Summary</span>
           </div>
@@ -96,20 +122,42 @@ function AppLayout({ children, activeLink, onNavigate }) {
           </div>
 
           <div className="topbar__right">
-            <button type="button" className="btn-dark" onClick={() => onNavigate('dashboard')}>
+            <button
+              type="button"
+              className="btn-dark"
+              onClick={() => onNavigate("dashboard")}
+            >
               <IconPlus size={14} />
               Add Transaction
             </button>
-            <button type="button" className="icon-btn" aria-label="Notifications">
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Notifications"
+            >
               <IconBell size={18} />
               <span className="icon-btn__dot" />
             </button>
+
             <div className="user">
               <div className="user__text">
-                <p className="user__name">Elena Vance</p>
-                <p className="user__plan">Pro Plan</p>
+                <p className="user__name">{user?.name || "BudgetIQ User"}</p>
+                <p className="user__plan">{user?.email}</p>
               </div>
-              <span className="avatar">EV</span>
+
+              <span className="avatar">
+                {(user?.name || "U")
+                  .trim()
+                  .split(/\s+/)
+                  .slice(0, 2)
+                  .map((part) => part[0])
+                  .join("")
+                  .toUpperCase()}
+              </span>
+
+              <button type="button" className="logout-btn" onClick={onLogout}>
+                Logout
+              </button>
             </div>
           </div>
         </header>
@@ -117,7 +165,7 @@ function AppLayout({ children, activeLink, onNavigate }) {
         <main className="content">{children}</main>
       </div>
     </div>
-  )
+  );
 }
 
-export default AppLayout
+export default AppLayout;

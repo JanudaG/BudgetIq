@@ -1,17 +1,18 @@
 import { useState, useEffect } from "react";
+
 import AppLayout from "./components/layout/AppLayout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Transactions from "./pages/Transactions.jsx";
+import Budget from "./pages/Budget.jsx";
+import Auth from "./pages/Auth.jsx";
 
 import { api } from "./api/api.js";
-import Budget from "./pages/Budget.jsx";
 import "./App.css";
 
 function ComingSoon() {
   return <h1>Page coming soon!</h1>;
 }
 
-// Maps a nav key to the page component for it.
 const PAGES = {
   dashboard: Dashboard,
   budget: Budget,
@@ -24,27 +25,117 @@ const PAGES = {
 function App() {
   const [activeLink, setActiveLink] = useState("dashboard");
 
-  // Shared data lives here, in the closest common parent, so every page
-  // (and later the Transactions and Budget pages) sees the same data.
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
   const [transactions, setTransactions] = useState([]);
   const [envelopes, setEnvelopes] = useState([]);
-  const [loading, setLoading] = useState(true);
+
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Restore an existing session on page load.
   useEffect(() => {
-    Promise.all([api.getTransactions(), api.getEnvelopes()])
-      .then(([t, e]) => {
-        setTransactions(t);
-        setEnvelopes(e);
-      })
-      .catch(() => setError("Could not reach the server. Is it running?"))
-      .finally(() => setLoading(false));
-  }, []); // no setter yet: limits become editable on the Budget page
+    let active = true;
+
+    async function restoreSession() {
+      const token = sessionStorage.getItem("budgetiq_token");
+
+      if (!token) {
+        if (active) setAuthLoading(false);
+        return;
+      }
+
+      try {
+        const currentUser = await api.getMe();
+
+        if (active) {
+          setUser(currentUser);
+        }
+      } catch {
+        sessionStorage.removeItem("budgetiq_token");
+      } finally {
+        if (active) setAuthLoading(false);
+      }
+    }
+
+    restoreSession();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Load data only after a user is authenticated.
+  useEffect(() => {
+    if (!user) return;
+
+    let active = true;
+
+    async function loadData() {
+      setLoading(true);
+      setError("");
+
+      try {
+        const [t, e] = await Promise.all([
+          api.getTransactions(),
+          api.getEnvelopes(),
+        ]);
+
+        if (active) {
+          setTransactions(t);
+          setEnvelopes(e);
+        }
+      } catch (err) {
+        if (active) {
+          setError(err.message || "Could not load your data.");
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadData();
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  // Login or register a user.
+  async function handleAuthenticate(mode, formData) {
+    const result =
+      mode === "register"
+        ? await api.register(formData)
+        : await api.login(formData);
+
+    sessionStorage.setItem("budgetiq_token", result.token);
+
+    setTransactions([]);
+    setEnvelopes([]);
+    setError("");
+    setActiveLink("dashboard");
+    setUser(result.user);
+  }
+
+  // End the current session.
+  function handleLogout() {
+    sessionStorage.removeItem("budgetiq_token");
+
+    setUser(null);
+    setTransactions([]);
+    setEnvelopes([]);
+    setError("");
+    setActiveLink("dashboard");
+  }
+
+  // TRANSACTIONS
 
   async function addTransaction(newTransaction) {
-    const saved = await api.createTransaction(newTransaction); // wait for the server's copy (it has the real id)
+    const saved = await api.createTransaction(newTransaction);
     setTransactions((prev) => [saved, ...prev]);
   }
+
   async function updateTransaction(id, changes) {
     const updated = await api.updateTransaction(id, changes);
 
@@ -53,8 +144,11 @@ function App() {
 
   async function deleteTransaction(id) {
     await api.deleteTransaction(id);
+
     setTransactions((prev) => prev.filter((t) => t.id !== id));
   }
+
+  // ENVELOPES
 
   async function addEnvelope(newEnvelope) {
     const saved = await api.createEnvelope(newEnvelope);
@@ -62,36 +156,65 @@ function App() {
   }
 
   async function updateEnvelope(id, changes) {
-    // Update the screen first so typing in the limit box feels instant, then save.
-    setEnvelopes((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, ...changes } : e)),
-    );
-    await api.updateEnvelope(id, changes);
+    const updated = await api.updateEnvelope(id, changes);
+
+    setEnvelopes((prev) => prev.map((e) => (e.id === id ? updated : e)));
   }
 
   async function deleteEnvelope(id) {
     await api.deleteEnvelope(id);
+
     setEnvelopes((prev) => prev.filter((e) => e.id !== id));
   }
 
-  if (loading) return <p className="app-status">Loading your budget...</p>;
-  if (error) return <p className="app-status">{error}</p>;
+  // RENDER
+
+  if (authLoading) {
+    return <p className="app-status">Checking your session...</p>;
+  }
+
+  if (!user) {
+    return <Auth onAuthenticate={handleAuthenticate} />;
+  }
 
   const ActivePage = PAGES[activeLink] || ComingSoon;
 
   return (
-    <AppLayout activeLink={activeLink} onNavigate={setActiveLink}>
-      <ActivePage
-        transactions={transactions}
-        onDeleteTransaction={deleteTransaction}
-        onUpdateTransaction={updateTransaction}
-        envelopes={envelopes}
-        onAddTransaction={addTransaction}
-        onNavigate={setActiveLink}
-        onAddEnvelope={addEnvelope}
-        onUpdateEnvelope={updateEnvelope}
-        onDeleteEnvelope={deleteEnvelope}
-      />
+    <AppLayout
+      activeLink={activeLink}
+      onNavigate={setActiveLink}
+      user={user}
+      onLogout={handleLogout}
+    >
+      {loading ? (
+        <p className="app-status">Loading your budget...</p>
+      ) : error ? (
+        <div className="app-status" role="alert">
+          <p>{error}</p>
+          <button
+            type="button"
+            onClick={() => setUser((prev) => ({ ...prev }))}
+          >
+            Retry
+          </button>
+          <button type="button" onClick={handleLogout}>
+            Sign Out
+          </button>
+        </div>
+      ) : (
+        <ActivePage
+          transactions={transactions}
+          onAddTransaction={addTransaction}
+          onUpdateTransaction={updateTransaction}
+          onDeleteTransaction={deleteTransaction}
+          envelopes={envelopes}
+          onAddEnvelope={addEnvelope}
+          onUpdateEnvelope={updateEnvelope}
+          onDeleteEnvelope={deleteEnvelope}
+          onNavigate={setActiveLink}
+          user={user}
+        />
+      )}
     </AppLayout>
   );
 }
