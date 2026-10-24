@@ -1,36 +1,42 @@
-import { useState } from 'react'
-import { IconBolt, IconPlusCircle } from '../common/Icon.jsx'
-import { CATEGORIES, PAYMENT_ACCOUNTS } from '../../constants/categories.js'
-import { todayISO } from '../../utils/format.js'
+import { useState } from "react";
+import { IconBolt, IconPlusCircle } from "../common/Icon.jsx";
+import { CATEGORIES, PAYMENT_ACCOUNTS } from "../../constants/categories.js";
+import { todayISO } from "../../utils/format.js";
 
 // A "controlled form": every input's value lives in state, and every
 // keystroke goes through onChange -> setState -> re-render -> value={...}.
 // React is always the single source of truth for what's in the form.
 function QuickAddForm({ onAddTransaction }) {
-  const [amount, setAmount] = useState('')
-  const [category, setCategory] = useState(CATEGORIES[1]) // Food & Dining, like the design
-  const [account, setAccount] = useState(PAYMENT_ACCOUNTS[0])
-  const [description, setDescription] = useState('')
+  const [amount, setAmount] = useState("");
+  const [category, setCategory] = useState(CATEGORIES[1]); // Food & Dining, like the design
+  const [account, setAccount] = useState(PAYMENT_ACCOUNTS[0]);
+  const [description, setDescription] = useState("");
+  const [type, setType] = useState("expense");
+  const [formError, setFormError] = useState("");
 
   function handleSubmit(event) {
-    event.preventDefault() // without this the browser reloads the page on submit
+    event.preventDefault(); // without this the browser reloads the page on submit
 
-    const numericAmount = Number(amount)
-    if (!(numericAmount > 0) || !description.trim()) return // ignore empty/invalid input
+    const numericAmount = Number(amount);
+    if (!(numericAmount > 0) || !description.trim()) {
+      setFormError("Enter an amount above 0 and a description.");
+      return;
+    }
+    setFormError("");
 
     onAddTransaction({
       name: description.trim(),
-      category,
-      account,
-      type: 'expense',
+      category: type === "income" ? "Income" : category,
+      account: type === "income" ? null : account,
+      type,
       amount: numericAmount,
       date: todayISO(),
-    })
+    });
 
     // Clear the fields that change every time; keep category/account selected,
     // because you often log several purchases in a row.
-    setAmount('')
-    setDescription('')
+    setAmount("");
+    setDescription("");
   }
 
   return (
@@ -44,6 +50,22 @@ function QuickAddForm({ onAddTransaction }) {
       </div>
 
       <form className="quick-add__form" onSubmit={handleSubmit}>
+        <div className="segmented">
+          <button
+            type="button"
+            className={type === "expense" ? "is-active" : ""}
+            onClick={() => setType("expense")}
+          >
+            Expense
+          </button>
+          <button
+            type="button"
+            className={type === "income" ? "is-active" : ""}
+            onClick={() => setType("income")}
+          >
+            Income
+          </button>
+        </div>
         <label className="field">
           <span className="field__label">Amount ($ USD)</span>
           <span className="field__money">
@@ -62,7 +84,10 @@ function QuickAddForm({ onAddTransaction }) {
         <div className="field-row">
           <label className="field">
             <span className="field__label">Category</span>
-            <select value={category} onChange={(event) => setCategory(event.target.value)}>
+            <select
+              value={category}
+              onChange={(event) => setCategory(event.target.value)}
+            >
               {CATEGORIES.map((name) => (
                 <option key={name} value={name}>
                   {name}
@@ -73,7 +98,10 @@ function QuickAddForm({ onAddTransaction }) {
 
           <label className="field">
             <span className="field__label">Account</span>
-            <select value={account} onChange={(event) => setAccount(event.target.value)}>
+            <select
+              value={account}
+              onChange={(event) => setAccount(event.target.value)}
+            >
               {PAYMENT_ACCOUNTS.map((name) => (
                 <option key={name} value={name}>
                   {name}
@@ -92,14 +120,14 @@ function QuickAddForm({ onAddTransaction }) {
             onChange={(event) => setDescription(event.target.value)}
           />
         </label>
-
+        {formError && <p className="form-error">{formError}</p>}
         <button type="submit" className="btn-dark btn-dark--full">
           <IconPlusCircle size={18} />
           Log Transaction
         </button>
       </form>
     </section>
-  )
+  );
 }
 
-export default QuickAddForm
+export default QuickAddForm;
