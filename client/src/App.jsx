@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard.jsx";
 import Transactions from "./pages/Transactions.jsx";
 import Budget from "./pages/Budget.jsx";
 import Auth from "./pages/Auth.jsx";
+import Analytics from "./pages/Analytics.jsx";
 
 import { api } from "./api/api.js";
 import "./App.css";
@@ -17,7 +18,7 @@ const PAGES = {
   dashboard: Dashboard,
   budget: Budget,
   transactions: Transactions,
-  analytics: ComingSoon,
+  analytics: Analytics,
   accounts: ComingSoon,
   settings: ComingSoon,
 };
