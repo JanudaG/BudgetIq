@@ -71,4 +71,22 @@ export const api = {
     request(`/envelopes/${id}`, {
       method: "DELETE",
     }),
+  getAccounts: () => request("/accounts"),
+
+  createAccount: (data) =>
+    request("/accounts", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateAccount: (id, changes) =>
+    request(`/accounts/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(changes),
+    }),
+
+  deleteAccount: (id) =>
+    request(`/accounts/${id}`, {
+      method: "DELETE",
+    }),
 };

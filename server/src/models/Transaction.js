@@ -18,6 +18,12 @@ const transactionSchema = new mongoose.Schema(
     },
     category: { type: String, required: true },
     account: { type: String, default: null },
+    accountId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Account",
+      default: null,
+      index: true,
+    },
     type: {
       type: String,
       enum: ["income", "expense"],

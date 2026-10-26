@@ -6,6 +6,8 @@ import Transactions from "./pages/Transactions.jsx";
 import Budget from "./pages/Budget.jsx";
 import Auth from "./pages/Auth.jsx";
 import Analytics from "./pages/Analytics.jsx";
+import Accounts from "./pages/Accounts.jsx";
+import { calculateAccountBalance } from "./utils/accountBalances.js";
 
 import { api } from "./api/api.js";
 import "./App.css";
@@ -19,7 +21,7 @@ const PAGES = {
   budget: Budget,
   transactions: Transactions,
   analytics: Analytics,
-  accounts: ComingSoon,
+  accounts: Accounts,
   settings: ComingSoon,
 };
 
@@ -31,6 +33,7 @@ function App() {
 
   const [transactions, setTransactions] = useState([]);
   const [envelopes, setEnvelopes] = useState([]);
+  const [accounts, setAccounts] = useState([]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -78,14 +81,16 @@ function App() {
       setError("");
 
       try {
-        const [t, e] = await Promise.all([
+        const [t, e, a] = await Promise.all([
           api.getTransactions(),
           api.getEnvelopes(),
+          api.getAccounts(),
         ]);
 
         if (active) {
           setTransactions(t);
           setEnvelopes(e);
+          setAccounts(a);
         }
       } catch (err) {
         if (active) {
@@ -115,6 +120,7 @@ function App() {
     setTransactions([]);
     setEnvelopes([]);
     setError("");
+    setAccounts([]);
     setActiveLink("dashboard");
     setUser(result.user);
   }
@@ -126,6 +132,7 @@ function App() {
     setUser(null);
     setTransactions([]);
     setEnvelopes([]);
+    setAccounts([]);
     setError("");
     setActiveLink("dashboard");
   }
@@ -168,6 +175,26 @@ function App() {
     setEnvelopes((prev) => prev.filter((e) => e.id !== id));
   }
 
+  // ACCOUNTS
+
+  async function addAccount(data) {
+    const saved = await api.createAccount(data);
+    setAccounts((prev) => [saved, ...prev]);
+  }
+
+  async function updateAccount(id, changes) {
+    const updated = await api.updateAccount(id, changes);
+
+    setAccounts((prev) =>
+      prev.map((account) => (account.id === id ? updated : account)),
+    );
+  }
+
+  async function deleteAccount(id) {
+    await api.deleteAccount(id);
+
+    setAccounts((prev) => prev.filter((account) => account.id !== id));
+  }
   // RENDER
 
   if (authLoading) {
@@ -177,6 +204,10 @@ function App() {
   if (!user) {
     return <Auth onAuthenticate={handleAuthenticate} />;
   }
+  const accountsWithBalances = accounts.map((account) => ({
+    ...account,
+    balance: calculateAccountBalance(account, transactions),
+  }));
 
   const ActivePage = PAGES[activeLink] || ComingSoon;
 
@@ -212,6 +243,10 @@ function App() {
           onAddEnvelope={addEnvelope}
           onUpdateEnvelope={updateEnvelope}
           onDeleteEnvelope={deleteEnvelope}
+          accounts={accountsWithBalances}
+          onAddAccount={addAccount}
+          onUpdateAccount={updateAccount}
+          onDeleteAccount={deleteAccount}
           onNavigate={setActiveLink}
           user={user}
         />

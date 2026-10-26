@@ -17,6 +17,7 @@ function Transactions({
   transactions,
   onDeleteTransaction,
   onUpdateTransaction,
+  accounts = [],
   onNavigate,
 }) {
   const [query, setQuery] = useState("");
@@ -35,7 +36,7 @@ function Transactions({
   const spendingPercent = Math.round((expenses / MONTHLY.spendingCap) * 100);
 
   // ---- Dropdown options come from the data itself ----
-  const accounts = [...new Set(transactions.map((t) => t.account))].filter(
+  const accountNames = [...new Set(transactions.map((t) => t.account))].filter(
     Boolean,
   );
   const categories = [...new Set(transactions.map((t) => t.category))];
@@ -111,6 +112,7 @@ function Transactions({
         name: editingTransaction.name.trim(),
         category: editingTransaction.category.trim(),
         account: editingTransaction.account,
+        accountId: editingTransaction.accountId,
         type: editingTransaction.type,
         amount,
         date: editingTransaction.date,
@@ -136,6 +138,17 @@ function Transactions({
     } catch (error) {
       window.alert(error.message || "Failed to delete transaction.");
     }
+  }
+  function getAccountName(transaction) {
+    if (transaction.accountId) {
+      const linkedAccount = accounts.find(
+        (account) => account.id === transaction.accountId,
+      );
+
+      return linkedAccount?.name ?? "Unknown account";
+    }
+
+    return transaction.account || "Unassigned";
   }
 
   return (
@@ -223,8 +236,8 @@ function Transactions({
           </div>
 
           <select value={account} onChange={(e) => setAccount(e.target.value)}>
-            <option value="all">All Accounts ({accounts.length})</option>
-            {accounts.map((a) => (
+            <option value="all">All Accounts ({accountNames.length})</option>
+            {accountNames.map((a) => (
               <option key={a} value={a}>
                 {a}
               </option>
@@ -289,7 +302,7 @@ function Transactions({
                       {t.category}
                     </span>
                   </td>
-                  <td>{t.account}</td>
+                  <td>{getAccountName(t)}</td>
                   <td
                     className={`ledger__right ledger__amount${t.type === "income" ? " is-income" : ""}`}
                   >
@@ -374,15 +387,31 @@ function Transactions({
 
             <label>
               Account
-              <input
-                value={editingTransaction.account ?? ""}
-                onChange={(e) =>
+              <select
+                value={editingTransaction.accountId ?? ""}
+                onChange={(e) => {
+                  const selectedAccount = accounts.find(
+                    (account) => account.id === e.target.value,
+                  );
+
                   setEditingTransaction({
                     ...editingTransaction,
-                    account: e.target.value,
-                  })
-                }
-              />
+                    accountId: selectedAccount?.id ?? null,
+                    account: selectedAccount?.name ?? null,
+                  });
+                }}
+                required
+              >
+                <option value="">Select an account</option>
+
+                {accounts
+                  .filter((account) => account.currency === "USD")
+                  .map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name} (USD)
+                    </option>
+                  ))}
+              </select>
             </label>
 
             <label>

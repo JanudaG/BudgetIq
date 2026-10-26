@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { IconBolt, IconPlusCircle } from "../common/Icon.jsx";
-import { CATEGORIES, PAYMENT_ACCOUNTS } from "../../constants/categories.js";
+import { CATEGORIES } from "../../constants/categories.js";
 import { todayISO } from "../../utils/format.js";
 
 // A "controlled form": every input's value lives in state, and every
 // keystroke goes through onChange -> setState -> re-render -> value={...}.
 // React is always the single source of truth for what's in the form.
-function QuickAddForm({ onAddTransaction }) {
+function QuickAddForm({ onAddTransaction, accounts = [] }) {
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState(CATEGORIES[1]); // Food & Dining, like the design
-  const [account, setAccount] = useState(PAYMENT_ACCOUNTS[0]);
+  const [accountId, setAccountId] = useState("");
   const [description, setDescription] = useState("");
   const [type, setType] = useState("expense");
   const [formError, setFormError] = useState("");
@@ -23,11 +23,11 @@ function QuickAddForm({ onAddTransaction }) {
       return;
     }
     setFormError("");
-
     onAddTransaction({
       name: description.trim(),
       category: type === "income" ? "Income" : category,
-      account: type === "income" ? null : account,
+      accountId,
+      account: accounts.find((a) => a.id === accountId)?.name ?? null,
       type,
       amount: numericAmount,
       date: todayISO(),
@@ -98,15 +98,21 @@ function QuickAddForm({ onAddTransaction }) {
 
           <label className="field">
             <span className="field__label">Account</span>
+
             <select
-              value={account}
-              onChange={(event) => setAccount(event.target.value)}
+              value={accountId}
+              onChange={(event) => setAccountId(event.target.value)}
+              required
             >
-              {PAYMENT_ACCOUNTS.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
+              <option value="">Select an account</option>
+
+              {accounts
+                .filter((a) => a.currency === "USD")
+                .map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} ({a.currency})
+                  </option>
+                ))}
             </select>
           </label>
         </div>

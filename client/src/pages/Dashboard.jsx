@@ -20,6 +20,7 @@ function Dashboard({
   transactions,
   envelopes,
   onAddTransaction,
+  accounts,
   onNavigate,
   user,
 }) {
@@ -157,7 +158,10 @@ function Dashboard({
         </section>
 
         <div className="side-column">
-          <QuickAddForm onAddTransaction={onAddTransaction} />
+          <QuickAddForm
+            onAddTransaction={onAddTransaction}
+            accounts={accounts}
+          />
           <RecentActivity
             transactions={transactions}
             onViewAll={() => onNavigate("transactions")}

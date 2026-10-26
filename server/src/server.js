@@ -3,17 +3,18 @@ import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import transactionRoutes from "./routes/transactions.js";
-import envelopeRoutes from './routes/envelopes.js';
-import authRoutes from './routes/auth.js'
-
+import envelopeRoutes from "./routes/envelopes.js";
+import authRoutes from "./routes/auth.js";
+import accountRoutes from "./routes/accounts.js";
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 app.use("/api/transactions", transactionRoutes);
-app.use('/api/envelopes', envelopeRoutes);
-app.use('/api/auth', authRoutes);
+app.use("/api/envelopes", envelopeRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/accounts", accountRoutes);
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
