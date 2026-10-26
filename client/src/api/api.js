@@ -89,4 +89,43 @@ export const api = {
     request(`/accounts/${id}`, {
       method: "DELETE",
     }),
+
+  getSavingsGoals: () => request("/savings-goals"),
+
+  createSavingsGoal: (data) =>
+    request("/savings-goals", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateSavingsGoal: (id, changes) =>
+    request(`/savings-goals/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(changes),
+    }),
+
+  deleteSavingsGoal: (id) =>
+    request(`/savings-goals/${id}`, {
+      method: "DELETE",
+    }),
+
+  getSavingsContributions: (goalId) =>
+    request(`/savings-goals/${goalId}/contributions`),
+
+  createSavingsContribution: (goalId, data) =>
+    request(`/savings-goals/${goalId}/contributions`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateSavingsContribution: (goalId, id, changes) =>
+    request(`/savings-goals/${goalId}/contributions/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(changes),
+    }),
+
+  deleteSavingsContribution: (goalId, id) =>
+    request(`/savings-goals/${goalId}/contributions/${id}`, {
+      method: "DELETE",
+    }),
 };

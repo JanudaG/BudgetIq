@@ -2149,3 +2149,202 @@ a {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* BudgetIQ Savings Goals */
+.savings-heading {
+  flex-wrap: wrap;
+}
+.savings-note {
+  padding: 12px 16px;
+  margin: 0 0 18px;
+  background: var(--tint);
+  color: var(--muted);
+  border-radius: 8px;
+  line-height: 1.6;
+}
+.savings-error {
+  padding: 12px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  background: var(--red-bg);
+  color: var(--red-ink);
+}
+.savings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.savings-card {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.savings-card__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.savings-card__top h2 {
+  font-size: 18px;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+.savings-card__eyebrow {
+  text-transform: uppercase;
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.savings-card__percent {
+  color: var(--blue);
+  background: var(--tint);
+  border-radius: 6px;
+  padding: 5px 8px;
+  white-space: nowrap;
+  font-weight: 700;
+}
+.savings-card__amount {
+  font-size: clamp(22px, 2.3vw, 30px);
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+.savings-progress {
+  height: 10px;
+  overflow: hidden;
+  background: var(--track);
+  border-radius: 99px;
+  margin-top: 5px;
+}
+.savings-progress > div {
+  height: 100%;
+  background: var(--blue-bar);
+  border-radius: inherit;
+  transition: width 0.2s;
+}
+.savings-card__details {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.savings-card__actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  border-top: 1px solid var(--tint-2);
+  padding-top: 14px;
+}
+.savings-card__actions button,
+.savings-history button {
+  background: none;
+  border: 0;
+  color: var(--blue);
+  font-weight: 600;
+  padding: 4px;
+}
+.savings-card__actions .savings-delete,
+.savings-history .savings-delete {
+  color: var(--red);
+}
+.savings-form-card {
+  margin-bottom: 20px;
+}
+.savings-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+.savings-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 13px;
+}
+.savings-form input,
+.savings-form select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--track);
+  border-radius: 6px;
+  padding: 9px;
+  background: white;
+}
+.savings-form__wide,
+.savings-form__actions {
+  grid-column: 1 / -1;
+}
+.savings-form__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.savings-form__actions button:not(.btn-dark) {
+  border: 1px solid var(--track);
+  border-radius: 6px;
+  background: white;
+  padding: 8px 12px;
+}
+.savings-contribution-form {
+  padding: 14px;
+  background: var(--bg);
+  border-radius: 8px;
+}
+.savings-contribution-form h3 {
+  grid-column: 1 / -1;
+  font-size: 14px;
+}
+.savings-history {
+  border-top: 1px solid var(--tint-2);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+.savings-history h3 {
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+.savings-history__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--tint-2);
+}
+.savings-history__row > div:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.savings-history__row small {
+  display: block;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.savings-history__row > div:last-child {
+  display: flex;
+  flex-shrink: 0;
+  gap: 5px;
+}
+.savings-empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 36px;
+}
+@media (max-width: 900px) {
+  .savings-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 550px) {
+  .savings-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

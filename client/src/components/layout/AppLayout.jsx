@@ -25,6 +25,11 @@ const NAV_ITEMS = [
   { key: "analytics", label: "Analytics & Insights", icon: IconAnalytics },
   { key: "accounts", label: "Accounts & Cards", icon: IconCard },
   { key: "settings", label: "Settings & Rules", icon: IconSliders },
+  {
+    key: "savings",
+    label: "Savings Goals",
+    icon: IconPie,
+  },
 ];
 
 function AppLayout({ children, activeLink, onNavigate, user, onLogout }) {

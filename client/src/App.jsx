@@ -8,6 +8,7 @@ import Auth from "./pages/Auth.jsx";
 import Analytics from "./pages/Analytics.jsx";
 import Accounts from "./pages/Accounts.jsx";
 import { calculateAccountBalance } from "./utils/accountBalances.js";
+import Savings from "./pages/Savings.jsx";
 
 import { api } from "./api/api.js";
 import "./App.css";
@@ -22,6 +23,7 @@ const PAGES = {
   transactions: Transactions,
   analytics: Analytics,
   accounts: Accounts,
+  savings: Savings,
   settings: ComingSoon,
 };
 

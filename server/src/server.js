@@ -6,6 +6,8 @@ import transactionRoutes from "./routes/transactions.js";
 import envelopeRoutes from "./routes/envelopes.js";
 import authRoutes from "./routes/auth.js";
 import accountRoutes from "./routes/accounts.js";
+import savingsGoalRoutes from "./routes/savingsGoals.js";
+import savingsContributionRoutes from "./routes/savingsContributions.js";
 
 const app = express();
 
@@ -15,6 +17,8 @@ app.use("/api/transactions", transactionRoutes);
 app.use("/api/envelopes", envelopeRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/accounts", accountRoutes);
+app.use("/api/savings-goals", savingsGoalRoutes);
+app.use("/api/savings-goals", savingsContributionRoutes);
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
