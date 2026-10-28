@@ -1,28 +1,138 @@
 const BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
-async function request(path, options) {
+async function request(path, options = {}) {
+  const token = sessionStorage.getItem("budgetiq_token");
+
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
     ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    },
   });
-  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `Request failed: ${res.status}`);
+  }
+
   return res.status === 204 ? null : res.json();
 }
 
 export const api = {
+  login: (data) =>
+    request("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  register: (data) =>
+    request("/auth/register", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getMe: () => request("/auth/me"),
+
   getTransactions: () => request("/transactions"),
+
   createTransaction: (data) =>
-    request("/transactions", { method: "POST", body: JSON.stringify(data) }),
+    request("/transactions", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateTransaction: (id, changes) =>
+    request(`/transactions/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(changes),
+    }),
+
   deleteTransaction: (id) =>
-    request(`/transactions/${id}`, { method: "DELETE" }),
+    request(`/transactions/${id}`, {
+      method: "DELETE",
+    }),
 
   getEnvelopes: () => request("/envelopes"),
+
   createEnvelope: (data) =>
-    request("/envelopes", { method: "POST", body: JSON.stringify(data) }),
+    request("/envelopes", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
   updateEnvelope: (id, changes) =>
     request(`/envelopes/${id}`, {
       method: "PATCH",
       body: JSON.stringify(changes),
     }),
-  deleteEnvelope: (id) => request(`/envelopes/${id}`, { method: "DELETE" }),
+
+  deleteEnvelope: (id) =>
+    request(`/envelopes/${id}`, {
+      method: "DELETE",
+    }),
+  getAccounts: () => request("/accounts"),
+
+  createAccount: (data) =>
+    request("/accounts", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateAccount: (id, changes) =>
+    request(`/accounts/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(changes),
+    }),
+
+  deleteAccount: (id) =>
+    request(`/accounts/${id}`, {
+      method: "DELETE",
+    }),
+
+  getSavingsGoals: () => request("/savings-goals"),
+
+  createSavingsGoal: (data) =>
+    request("/savings-goals", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateSavingsGoal: (id, changes) =>
+    request(`/savings-goals/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(changes),
+    }),
+
+  deleteSavingsGoal: (id) =>
+    request(`/savings-goals/${id}`, {
+      method: "DELETE",
+    }),
+
+  getSavingsContributions: (goalId) =>
+    request(`/savings-goals/${goalId}/contributions`),
+
+  createSavingsContribution: (goalId, data) =>
+    request(`/savings-goals/${goalId}/contributions`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateSavingsContribution: (goalId, id, changes) =>
+    request(`/savings-goals/${goalId}/contributions/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(changes),
+    }),
+
+  deleteSavingsContribution: (goalId, id) =>
+    request(`/savings-goals/${goalId}/contributions/${id}`, {
+      method: "DELETE",
+    }),
+    getFinancialSettings: () => request("/settings"),
+
+updateFinancialSettings: (changes) =>
+  request("/settings", {
+    method: "PATCH",
+    body: JSON.stringify(changes),
+  }),
 };
