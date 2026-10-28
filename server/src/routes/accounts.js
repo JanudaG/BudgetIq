@@ -1,65 +1,55 @@
 import { Router } from "express";
 import mongoose from "mongoose";
 import Account from "../models/Account.js";
-import { requireAuth } from "../middleware/auth.js";
 import Transaction from "../models/Transaction.js";
+import { requireAuth } from "../middleware/auth.js";
 
 const router = Router();
-
-// Every account endpoint requires a logged-in user.
 router.use(requireAuth);
 
-// GET /api/accounts
-// Return only the accounts owned by the current user.
+const allowedFields = [
+  "name",
+  "type",
+  "institution",
+  "openingBalance",
+  "currency",
+  "isLiquid",
+];
+
+function validFields(body) {
+  const keys = Object.keys(body ?? {});
+  return keys.length > 0 && keys.every((key) => allowedFields.includes(key));
+}
+
+function errorResponse(res, error) {
+  if (error.code === 11000) {
+    return res.status(409).json({
+      error: "You already have an account with this name.",
+    });
+  }
+  if (error.name === "ValidationError" || error.name === "CastError") {
+    return res.status(400).json({ error: error.message });
+  }
+  console.error("Accounts API error:", error);
+  return res.status(500).json({ error: "An account operation failed." });
+}
+
+// GET /api/accounts — list this user's accounts.
 router.get("/", async (req, res) => {
   try {
-    const accounts = await Account.find({
-      userId: req.userId,
-    }).sort({ createdAt: -1 });
-
-    res.json(accounts);
-  } catch {
-    res.status(500).json({
-      error: "Failed to load accounts.",
+    const accounts = await Account.find({ userId: req.userId }).sort({
+      createdAt: -1,
     });
-  }
-});
-
-// POST /api/accounts
-// Create an account owned by the current user.
-router.post("/", async (req, res) => {
-  try {
-    const { name, type, institution, openingBalance, currency, isLiquid } =
-      req.body;
-
-    const created = await Account.create({
-      userId: req.userId,
-      name,
-      type,
-      institution,
-      openingBalance,
-      currency,
-      isLiquid,
-    });
-
-    res.status(201).json(created);
+    return res.json(accounts);
   } catch (error) {
-    res.status(error.code === 11000 ? 409 : 400).json({
-      error:
-        error.code === 11000
-          ? "You already have an account with this name."
-          : error.message,
-    });
+    return errorResponse(res, error);
   }
 });
 
-// GET /api/accounts/:id
-// Return one account, checking ownership.
+// GET /api/accounts/:id — get one of this user's accounts.
 router.get("/:id", async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id)) {
-    return res.status(400).json({
-      error: "Invalid account ID.",
-    });
+    return res.status(400).json({ error: "Invalid account ID." });
   }
 
   try {
@@ -67,126 +57,122 @@ router.get("/:id", async (req, res) => {
       _id: req.params.id,
       userId: req.userId,
     });
-
     if (!account) {
-      return res.status(404).json({
-        error: "Account not found.",
-      });
+      return res.status(404).json({ error: "Account not found." });
     }
-
-    res.json(account);
-  } catch {
-    res.status(500).json({
-      error: "Failed to load account.",
-    });
+    return res.json(account);
+  } catch (error) {
+    return errorResponse(res, error);
   }
 });
 
-// PATCH /api/accounts/:id
-// Update permitted fields on the current user's account.
-router.patch("/:id", async (req, res) => {
-  if (!mongoose.isValidObjectId(req.params.id)) {
-    return res.status(400).json({
-      error: "Invalid account ID.",
-    });
-  }
-
-  const allowedFields = [
-    "name",
-    "type",
-    "institution",
-    "openingBalance",
-    "currency",
-    "isLiquid",
-  ];
-
-  const fields = Object.keys(req.body ?? {});
-
-  if (
-    fields.length === 0 ||
-    fields.some((field) => !allowedFields.includes(field))
-  ) {
-    return res.status(400).json({
-      error: "Invalid or empty update request.",
-    });
+// POST /api/accounts — create an account.
+router.post("/", async (req, res) => {
+  if (!validFields(req.body)) {
+    return res.status(400).json({ error: "Invalid or empty account request." });
   }
 
   try {
-    const updated = await Account.findOneAndUpdate(
-      {
-        _id: req.params.id,
+    const data = Object.fromEntries(
+      allowedFields
+        .filter((field) =>
+          Object.prototype.hasOwnProperty.call(req.body, field),
+        )
+        .map((field) => [field, req.body[field]]),
+    );
+
+    const created = await Account.create({ ...data, userId: req.userId });
+    return res.status(201).json(created);
+  } catch (error) {
+    return errorResponse(res, error);
+  }
+});
+
+// PATCH /api/accounts/:id — edit a user-owned account.
+router.patch("/:id", async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return res.status(400).json({ error: "Invalid account ID." });
+  }
+  if (!validFields(req.body)) {
+    return res.status(400).json({ error: "Invalid or empty update request." });
+  }
+
+  try {
+    const existingAccount = await Account.findOne({
+      _id: req.params.id,
+      userId: req.userId,
+    });
+
+    if (!existingAccount) {
+      return res.status(404).json({ error: "Account not found." });
+    }
+
+    // An account linked to transactions cannot switch currencies.
+    // Changing USD amounts into LKR without conversion would corrupt balances.
+    if (
+      req.body.currency !== undefined &&
+      req.body.currency !== existingAccount.currency
+    ) {
+      const linkedCount = await Transaction.countDocuments({
         userId: req.userId,
-      },
+        accountId: existingAccount._id,
+      });
+
+      if (linkedCount > 0) {
+        return res.status(409).json({
+          error:
+            "Cannot change account currency while transactions are linked to it.",
+        });
+      }
+    }
+
+    const updated = await Account.findOneAndUpdate(
+      { _id: existingAccount._id, userId: req.userId },
       { $set: req.body },
-      {
-        returnDocument: "after",
-        runValidators: true,
-      },
+      { returnDocument: "after", runValidators: true },
     );
 
     if (!updated) {
-      return res.status(404).json({
-        error: "Account not found.",
-      });
+      return res.status(404).json({ error: "Account not found." });
     }
 
-    res.json(updated);
+    return res.json(updated);
   } catch (error) {
-    res.status(error.code === 11000 ? 409 : 400).json({
-      error:
-        error.code === 11000
-          ? "You already have an account with this name."
-          : error.message,
-    });
+    return errorResponse(res, error);
   }
 });
 
-// DELETE /api/accounts/:id
-// Delete only an account belonging to the current user.
-
+// DELETE /api/accounts/:id — forbid deleting accounts with linked transactions.
 router.delete("/:id", async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id)) {
-    return res.status(400).json({
-      error: "Invalid account ID.",
-    });
+    return res.status(400).json({ error: "Invalid account ID." });
   }
 
   try {
-    // First, verify that the account belongs to this user.
     const account = await Account.findOne({
       _id: req.params.id,
       userId: req.userId,
     });
 
     if (!account) {
-      return res.status(404).json({
-        error: "Account not found.",
-      });
+      return res.status(404).json({ error: "Account not found." });
     }
 
-    // Check whether any transactions are linked to this account.
-    const linkedTransactions = await Transaction.countDocuments({
+    const linkedCount = await Transaction.countDocuments({
       userId: req.userId,
       accountId: account._id,
     });
 
-    if (linkedTransactions > 0) {
+    if (linkedCount > 0) {
       return res.status(409).json({
-        error: `Cannot delete this account because it has ${linkedTransactions} linked transaction(s). Reassign or delete those transactions first.`,
+        error: `Cannot delete this account because it has ${linkedCount} linked transaction(s). Reassign or delete those transactions first.`,
       });
     }
 
-    // Safe to delete: no transactions reference this account.
-    await Account.deleteOne({
-      _id: account._id,
-      userId: req.userId,
-    });
-
+    await Account.deleteOne({ _id: account._id, userId: req.userId });
     return res.status(204).end();
   } catch (error) {
-    return res.status(500).json({
-      error: "Failed to delete account.",
-    });
+    return errorResponse(res, error);
   }
 });
 

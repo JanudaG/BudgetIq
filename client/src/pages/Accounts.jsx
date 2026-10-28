@@ -118,7 +118,7 @@ function Accounts({
           </p>
           <h1 className="welcome__title">Accounts &amp; Cards</h1>
           <p className="welcome__sub">
-            Manage your financial accounts and their starting balances.
+            Track USD and LKR account balances independently.
           </p>
         </div>
         <button type="button" className="btn-dark" onClick={startCreate}>
@@ -127,9 +127,8 @@ function Accounts({
       </div>
 
       <p className="accounts-note">
-        Balances below are <strong>opening balances</strong>, not live balances.
-        Transaction linking and balance calculations are the next step. USD and
-        LKR amounts are not added together.
+        Calculated balances use only verified transactions in each account's
+        currency. Legacy transactions without currency are excluded.
       </p>
 
       {error && !formOpen && (
@@ -155,19 +154,11 @@ function Accounts({
             </div>
             <p className="account-card__balance">
               {money(
-                account.currency === "USD"
-                  ? account.balance
-                  : account.openingBalance,
+                account.balance ?? account.openingBalance,
                 account.currency,
               )}
             </p>
-
-            <p className="card__sub">
-              {account.currency === "USD"
-                ? "Calculated balance"
-                : "Opening balance"}{" "}
-              · {account.currency}
-            </p>
+            <p className="card__sub">Calculated balance · {account.currency}</p>
             <div className="account-card__actions">
               <button
                 type="button"

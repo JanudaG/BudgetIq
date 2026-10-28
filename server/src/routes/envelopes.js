@@ -1,95 +1,110 @@
-import { Router } from 'express'
-import mongoose from 'mongoose'
-import Envelope from '../models/Envelope.js'
-import { requireAuth } from '../middleware/auth.js'
-
-const router = Router()
-
-router.use(requireAuth)
-
-// GET: Current user's envelopes.
-router.get('/', async (req, res) => {
+import { Router } from "express";
+import mongoose from "mongoose";
+import Envelope from "../models/Envelope.js";
+import { requireAuth } from "../middleware/auth.js";
+const router = Router();
+router.use(requireAuth);
+router.get("/", async (req, res) => {
   try {
-    const envelopes = await Envelope.find({
-      userId: req.userId,
-    }).sort({ createdAt: 1 })
-
-    res.json(envelopes)
+    res.json(
+      await Envelope.find({ userId: req.userId }).sort({ createdAt: 1 }),
+    );
   } catch {
-    res.status(500).json({ error: 'Failed to load envelopes.' })
+    res.status(500).json({ error: "Failed to load envelopes." });
   }
-})
-
-// POST: Create an envelope for the logged-in user.
-router.post('/', async (req, res) => {
+});
+router.post("/", async (req, res) => {
   try {
-    const { category, group, subtitle, limit, rollover } = req.body
-
+    const { category, group, subtitle, limit, rollover, currency } =
+      req.body ?? {};
+    if (!["USD", "LKR"].includes(currency))
+      return res
+        .status(400)
+        .json({ error: "Select USD or LKR for the envelope." });
     const created = await Envelope.create({
+      userId: req.userId,
       category,
       group,
       subtitle,
       limit,
       rollover,
-      userId: req.userId,
-    })
-
-    res.status(201).json(created)
-  } catch (err) {
-    res.status(err.code === 11000 ? 409 : 400)
-      .json({ error: err.message })
+      currency,
+    });
+    res.status(201).json(created);
+  } catch (e) {
+    res
+      .status(e.code === 11000 ? 409 : 400)
+      .json({
+        error:
+          e.code === 11000
+            ? "An envelope for this category already exists."
+            : e.message,
+      });
   }
-})
-
-// PATCH: Update only the user's envelope.
-router.patch('/:id', async (req, res) => {
-  if (!mongoose.isValidObjectId(req.params.id)) {
-    return res.status(400).json({ error: 'Invalid envelope ID.' })
-  }
-
+});
+router.patch("/:id", async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id))
+    return res.status(400).json({ error: "Invalid envelope ID." });
+  const body = req.body ?? {};
+  const allowed = [
+    "category",
+    "group",
+    "subtitle",
+    "limit",
+    "rollover",
+    "currency",
+  ];
+  if (
+    !Object.keys(body).length ||
+    Object.keys(body).some((k) => !allowed.includes(k))
+  )
+    return res.status(400).json({ error: "Invalid update." });
   try {
-    const allowed = ['category', 'group', 'subtitle', 'limit', 'rollover']
-    const changes = Object.fromEntries(
-      Object.entries(req.body).filter(([key]) => allowed.includes(key))
+    const existing = await Envelope.findOne({
+      _id: req.params.id,
+      userId: req.userId,
+    });
+    if (!existing)
+      return res.status(404).json({ error: "Envelope not found." });
+    if (
+      Object.hasOwn(body, "currency") &&
+      existing.currency &&
+      existing.currency !== body.currency
     )
-
+      return res
+        .status(409)
+        .json({
+          error:
+            "Cannot change envelope currency. Create a separate envelope instead.",
+        });
+    if (
+      Object.hasOwn(body, "currency") &&
+      !["USD", "LKR"].includes(body.currency)
+    )
+      return res.status(400).json({ error: "Invalid currency." });
+    // For unclassified legacy envelope, permit one-time currency classification.
     const updated = await Envelope.findOneAndUpdate(
       { _id: req.params.id, userId: req.userId },
-      { $set: changes },
-      { returnDocument: 'after', runValidators: true }
-    )
-
-    if (!updated) {
-      return res.status(404).json({ error: 'Envelope not found.' })
-    }
-
-    res.json(updated)
-  } catch (err) {
-    res.status(err.code === 11000 ? 409 : 400)
-      .json({ error: err.message })
+      { $set: body },
+      { returnDocument: "after", runValidators: true },
+    );
+    res.json(updated);
+  } catch (e) {
+    res.status(e.code === 11000 ? 409 : 400).json({ error: e.message });
   }
-})
-
-// DELETE: Only remove the user's own envelope.
-router.delete('/:id', async (req, res) => {
-  if (!mongoose.isValidObjectId(req.params.id)) {
-    return res.status(400).json({ error: 'Invalid envelope ID.' })
-  }
-
+});
+router.delete("/:id", async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id))
+    return res.status(400).json({ error: "Invalid envelope ID." });
   try {
     const deleted = await Envelope.findOneAndDelete({
       _id: req.params.id,
       userId: req.userId,
-    })
-
-    if (!deleted) {
-      return res.status(404).json({ error: 'Envelope not found.' })
-    }
-
-    res.status(204).end()
+    });
+    if (!deleted) return res.status(404).json({ error: "Envelope not found." });
+    res.status(204).end();
   } catch {
-    res.status(500).json({ error: 'Failed to delete envelope.' })
+    res.status(500).json({ error: "Could not delete envelope." });
   }
-})
-
-export default router
+});
+export default router;

@@ -9,6 +9,7 @@ import Analytics from "./pages/Analytics.jsx";
 import Accounts from "./pages/Accounts.jsx";
 import { calculateAccountBalance } from "./utils/accountBalances.js";
 import Savings from "./pages/Savings.jsx";
+import Settings from "./pages/Settings.jsx";
 
 import { api } from "./api/api.js";
 import "./App.css";
@@ -24,7 +25,7 @@ const PAGES = {
   analytics: Analytics,
   accounts: Accounts,
   savings: Savings,
-  settings: ComingSoon,
+  settings: Settings,
 };
 
 function App() {
@@ -40,6 +41,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [financialSettings, setFinancialSettings] = useState(null);
   // Restore an existing session on page load.
   useEffect(() => {
     let active = true;
@@ -83,16 +85,17 @@ function App() {
       setError("");
 
       try {
-        const [t, e, a] = await Promise.all([
+        const [t, e, a, s] = await Promise.all([
           api.getTransactions(),
           api.getEnvelopes(),
           api.getAccounts(),
+          api.getFinancialSettings(),
         ]);
-
         if (active) {
           setTransactions(t);
           setEnvelopes(e);
           setAccounts(a);
+          setFinancialSettings(s);
         }
       } catch (err) {
         if (active) {
@@ -124,6 +127,7 @@ function App() {
     setError("");
     setAccounts([]);
     setActiveLink("dashboard");
+    setFinancialSettings(null);
     setUser(result.user);
   }
 
@@ -136,6 +140,7 @@ function App() {
     setEnvelopes([]);
     setAccounts([]);
     setError("");
+    setFinancialSettings(null);
     setActiveLink("dashboard");
   }
 
@@ -197,6 +202,11 @@ function App() {
 
     setAccounts((prev) => prev.filter((account) => account.id !== id));
   }
+  async function saveFinancialSettings(changes) {
+    const updated = await api.updateFinancialSettings(changes);
+    setFinancialSettings(updated);
+  }
+
   // RENDER
 
   if (authLoading) {
@@ -211,6 +221,16 @@ function App() {
     balance: calculateAccountBalance(account, transactions),
   }));
 
+  const preferredCurrency = financialSettings?.preferredCurrency ?? "LKR";
+
+  const currencyTransactions = transactions.filter(
+    (transaction) => transaction.currency === preferredCurrency,
+  );
+
+  const currencyEnvelopes = envelopes.filter(
+    (envelope) => envelope.currency === preferredCurrency,
+  );
+
   const ActivePage = PAGES[activeLink] || ComingSoon;
 
   return (
@@ -219,6 +239,9 @@ function App() {
       onNavigate={setActiveLink}
       user={user}
       onLogout={handleLogout}
+      transactions={transactions}
+      envelopes={envelopes}
+      preferredCurrency={preferredCurrency}
     >
       {loading ? (
         <p className="app-status">Loading your budget...</p>
@@ -237,11 +260,16 @@ function App() {
         </div>
       ) : (
         <ActivePage
-          transactions={transactions}
+          transactions={
+            activeLink === "transactions" || activeLink === "accounts"
+              ? transactions
+              : currencyTransactions
+          }
+          envelopes={currencyEnvelopes}
+          preferredCurrency={preferredCurrency}
           onAddTransaction={addTransaction}
           onUpdateTransaction={updateTransaction}
           onDeleteTransaction={deleteTransaction}
-          envelopes={envelopes}
           onAddEnvelope={addEnvelope}
           onUpdateEnvelope={updateEnvelope}
           onDeleteEnvelope={deleteEnvelope}
@@ -250,6 +278,8 @@ function App() {
           onUpdateAccount={updateAccount}
           onDeleteAccount={deleteAccount}
           onNavigate={setActiveLink}
+          settings={financialSettings}
+          onSaveSettings={saveFinancialSettings}
           user={user}
         />
       )}

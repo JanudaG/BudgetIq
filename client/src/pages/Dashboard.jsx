@@ -1,52 +1,148 @@
+
+
 import { useState } from "react";
 import KpiCard from "../components/dashboard/KpiCard.jsx";
 import EnvelopeCard from "../components/dashboard/EnvelopeCard.jsx";
 import QuickAddForm from "../components/dashboard/QuickAddForm.jsx";
 import RecentActivity from "../components/dashboard/RecentActivity.jsx";
-import { IconTrendUp, IconArrowRight } from "../components/common/Icon.jsx";
-import { ACCOUNT_SUMMARY, MONTHLY } from "../constants/mockData.js";
-import { formatCurrency } from "../utils/format.js";
+import { IconArrowRight } from "../components/common/Icon.jsx";
+import { formatMoney } from "../utils/currency.js";
 
 function getGreeting() {
   const hour = new Date().getHours();
+
   if (hour < 12) return "Good morning";
   if (hour < 18) return "Good afternoon";
+
   return "Good evening";
 }
 
-const total = (list) => list.reduce((sum, t) => sum + t.amount, 0);
+const total = (list) =>
+  list.reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
 function Dashboard({
-  transactions,
-  envelopes,
+  transactions = [],
+  envelopes = [],
   onAddTransaction,
-  accounts,
+  accounts = [],
+  settings,
+  preferredCurrency = "LKR",
   onNavigate,
   user,
 }) {
-  // Which period button looks selected. It's only visual for now; later it
-  // can decide which transactions get counted.
   const [period, setPeriod] = useState("month");
 
-  // ---- Everything below is DERIVED from `transactions` on every render. ----
-  // None of it is stored in state, so it can't go stale: log a transaction
-  // and App re-renders, which re-runs this function with the new array.
-  const incomeList = transactions.filter((t) => t.type === "income");
-  const expenseList = transactions.filter((t) => t.type === "expense");
+  const money = (amount) =>
+    formatMoney(amount, preferredCurrency);
+
+  const now = new Date();
+
+  const monthKey = (date) =>
+    `${date.getFullYear()}-${String(
+      date.getMonth() + 1
+    ).padStart(2, "0")}`;
+
+  const currentMonth = monthKey(now);
+
+  const previousMonth = monthKey(
+    new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  );
+
+  const selectedMonth =
+    period === "compare" ? previousMonth : currentMonth;
+
+  // Only include transactions in the selected currency.
+  const reportingTransactions = transactions.filter(
+    (transaction) =>
+      transaction.currency === preferredCurrency
+  );
+
+  const monthTransactions = reportingTransactions.filter(
+    (transaction) =>
+      transaction.date?.startsWith(selectedMonth)
+  );
+
+  const incomeList = monthTransactions.filter(
+    (transaction) => transaction.type === "income"
+  );
+
+  const expenseList = monthTransactions.filter(
+    (transaction) => transaction.type === "expense"
+  );
 
   const income = total(incomeList);
   const expenses = total(expenseList);
 
-  const incomeGoalPercent = Math.round((income / MONTHLY.incomeGoal) * 100);
-  const spendingPercent = Math.round((expenses / MONTHLY.spendingCap) * 100);
-  const buffer = MONTHLY.spendingCap - expenses;
-  const savingsRate = income > 0 ? ((income - expenses) / income) * 100 : 0;
-  const savingsDelta = savingsRate - MONTHLY.savingsTarget;
+  // Only include budget envelopes in the selected currency.
+  const reportingEnvelopes = envelopes.filter(
+    (envelope) =>
+      envelope.currency === preferredCurrency
+  );
 
-  // Build { 'Food & Dining': 840, 'Transportation': 310, ... } in one pass.
+  const allocated = reportingEnvelopes.reduce(
+    (sum, envelope) =>
+      sum + Number(envelope.limit || 0),
+    0
+  );
+
+  const spendingPercent =
+    allocated > 0
+      ? Math.round((expenses / allocated) * 100)
+      : null;
+
+  const buffer = allocated - expenses;
+
+  const savingsRate =
+    income > 0
+      ? ((income - expenses) / income) * 100
+      : null;
+
+  const savingsTarget = settings?.savingsTarget;
+
+  const savingsDelta =
+    savingsRate !== null && savingsTarget != null
+      ? savingsRate - savingsTarget
+      : null;
+
+  // Calculate balances using only accounts in the
+  // selected reporting currency.
+  const reportingAccounts = accounts.filter(
+    (account) =>
+      account.currency === preferredCurrency
+  );
+
+  const trackedBalance = reportingAccounts.reduce(
+    (sum, account) =>
+      sum +
+      Number(
+        account.balance ??
+        account.openingBalance ??
+        0
+      ),
+    0
+  );
+
+  // Calculate liquid funds in the selected currency.
+  const liquidBalance = reportingAccounts
+    .filter((account) => account.isLiquid)
+    .reduce(
+      (sum, account) =>
+        sum +
+        Number(
+          account.balance ??
+          account.openingBalance ??
+          0
+        ),
+      0
+    );
+
+  // Calculate current-period spending by category.
   const spentByCategory = {};
-  expenseList.forEach((t) => {
-    spentByCategory[t.category] = (spentByCategory[t.category] || 0) + t.amount;
+
+  expenseList.forEach((transaction) => {
+    spentByCategory[transaction.category] =
+      (spentByCategory[transaction.category] || 0) +
+      Number(transaction.amount || 0);
   });
 
   return (
@@ -54,72 +150,124 @@ function Dashboard({
       <div className="welcome">
         <div>
           <h1 className="welcome__title">
-            {getGreeting()}, {user?.name?.split(" ")[0] || "there"} 👋
+            {getGreeting()},{" "}
+            {user?.name?.split(" ")[0] || "there"} 👋
           </h1>
+
           <p className="welcome__sub">
-            Here is your real-time financial health and monthly cash flow
-            summary.
+            Here is your real-time financial health
+            and monthly cash flow summary.
           </p>
         </div>
+
         <div className="segmented">
           <button
             type="button"
-            className={period === "month" ? "is-active" : ""}
+            className={
+              period === "month" ? "is-active" : ""
+            }
             onClick={() => setPeriod("month")}
           >
-            This Month (Oct 1 - Oct 31)
+            This Month
           </button>
+
           <button
             type="button"
-            className={period === "compare" ? "is-active" : ""}
+            className={
+              period === "compare" ? "is-active" : ""
+            }
             onClick={() => setPeriod("compare")}
           >
-            Compare with Sept
+            Previous Month
           </button>
         </div>
       </div>
 
       <div className="kpi-row">
         <KpiCard
-          label="Total Net Worth"
-          value={formatCurrency(ACCOUNT_SUMMARY.netWorth)}
+          label={`Tracked ${preferredCurrency} Balances`}
+          value={money(trackedBalance)}
           badge={{
-            tone: "success",
-            text: `+${ACCOUNT_SUMMARY.netWorthChange}%`,
-            icon: <IconTrendUp size={12} />,
+            tone: "info",
+            text: `${reportingAccounts.length} ${preferredCurrency} accounts`,
           }}
-          footerLabel="Liquid Assets"
-          footerValue={formatCurrency(ACCOUNT_SUMMARY.liquidAssets)}
+          footerLabel={`Liquid ${preferredCurrency} Funds`}
+          footerValue={
+            reportingAccounts.length > 0
+              ? money(liquidBalance)
+              : `No ${preferredCurrency} accounts`
+          }
         />
+
         <KpiCard
           label="Monthly Income"
-          value={formatCurrency(income)}
-          badge={{ tone: "info", text: `${incomeGoalPercent}% of Goal` }}
-          footerLabel="Next Expected"
-          footerValue={`${MONTHLY.nextIncome.label} (${formatCurrency(MONTHLY.nextIncome.amount)})`}
-          footerTone="info"
+          value={money(income)}
+          badge={{
+            tone: "info",
+            text: `${incomeList.length} inflows`,
+          }}
+          footerLabel="Reporting Period"
+          footerValue={selectedMonth}
         />
+
         <KpiCard
           label="Monthly Spending"
-          subLabel={`${spendingPercent}% utilized`}
-          value={formatCurrency(expenses)}
-          progress={spendingPercent}
-          footerLabel="Buffer Remaining"
-          footerValue={`${buffer >= 0 ? "+" : "-"}${formatCurrency(Math.abs(buffer))}`}
-          footerTone={buffer >= 0 ? "success" : "danger"}
+          value={money(expenses)}
+          subLabel={
+            spendingPercent === null
+              ? "No budget configured"
+              : `${spendingPercent}% of budget`
+          }
+          progress={
+            spendingPercent === null
+              ? undefined
+              : Math.max(0, spendingPercent)
+          }
+          footerLabel="Budget Remaining"
+          footerValue={
+            allocated > 0
+              ? money(buffer)
+              : "Create a budget"
+          }
+          footerTone={
+            buffer < 0 ? "danger" : "default"
+          }
           boxedFooter={false}
         />
+
         <KpiCard
           label="Net Savings Rate"
-          value={`${savingsRate.toFixed(1)}%`}
-          badge={
-            savingsDelta >= 0
-              ? { tone: "success", text: "Optimal Health" }
-              : { tone: "danger", text: "Below Target" }
+          value={
+            savingsRate === null
+              ? "N/A"
+              : `${savingsRate.toFixed(1)}%`
           }
-          footerLabel={`vs ${MONTHLY.savingsTarget}% Target`}
-          footerValue={`${savingsDelta >= 0 ? "+" : ""}${savingsDelta.toFixed(1)}% buffer`}
-          footerTone={savingsDelta >= 0 ? "success" : "danger"}
+          badge={
+            savingsDelta === null
+              ? {
+                  tone: "info",
+                  text: "No comparison",
+                }
+              : savingsDelta >= 0
+                ? {
+                    tone: "success",
+                    text: "On Target",
+                  }
+                : {
+                    tone: "danger",
+                    text: "Below Target",
+                  }
+          }
+          footerLabel={
+            savingsTarget == null
+              ? "Target unavailable"
+              : `vs ${savingsTarget}% Target`
+          }
+          footerValue={
+            savingsDelta === null
+              ? "No comparison available"
+              : `${savingsDelta.toFixed(1)} percentage points`
+          }
         />
       </div>
 
@@ -130,10 +278,13 @@ function Dashboard({
               <h2 className="card__title">
                 Budget Allocation &amp; Envelope Health
               </h2>
+
               <p className="card__sub">
-                Real-time expenditure limits tracking against envelope caps
+                Real-time expenditure limits tracking
+                against envelope caps
               </p>
             </div>
+
             <button
               type="button"
               className="link-btn"
@@ -145,15 +296,22 @@ function Dashboard({
           </div>
 
           <div className="envelope-grid">
-            {envelopes.slice(0, 4).map((env) => (
-              <EnvelopeCard
-                key={env.id}
-                category={env.category}
-                subtitle={env.subtitle}
-                spent={spentByCategory[env.category] || 0}
-                limit={env.limit}
-              />
-            ))}
+            {reportingEnvelopes.slice(0, 4).map(
+              (envelope) => (
+                <EnvelopeCard
+                  key={envelope.id}
+                  category={envelope.category}
+                  subtitle={envelope.subtitle}
+                  spent={
+                    spentByCategory[
+                      envelope.category
+                    ] || 0
+                  }
+                  limit={envelope.limit}
+                  currency={preferredCurrency}
+                />
+              )
+            )}
           </div>
         </section>
 
@@ -162,9 +320,12 @@ function Dashboard({
             onAddTransaction={onAddTransaction}
             accounts={accounts}
           />
+
           <RecentActivity
-            transactions={transactions}
-            onViewAll={() => onNavigate("transactions")}
+            transactions={reportingTransactions}
+            onViewAll={() =>
+              onNavigate("transactions")
+            }
           />
         </div>
       </div>

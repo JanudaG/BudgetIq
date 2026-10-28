@@ -4,17 +4,17 @@ import StatCard from "../components/common/StatCard.jsx";
 import {
   IconAnalytics,
   IconTrendUp,
-  IconBolt,
   IconPlus,
   IconSearch,
 } from "../components/common/Icon.jsx";
-import { MONTHLY } from "../constants/mockData.js";
-import { formatCurrency, formatDate } from "../utils/format.js";
+import { formatDate } from "../utils/format.js";
+import { formatMoney } from "../utils/currency.js";
 
-const total = (list) => list.reduce((sum, t) => sum + t.amount, 0);
+const total = (list) => list.reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
 function Transactions({
   transactions,
+  preferredCurrency = "LKR",
   onDeleteTransaction,
   onUpdateTransaction,
   accounts = [],
@@ -29,25 +29,49 @@ function Transactions({
   const [saving, setSaving] = useState(false);
   const [sortBy, setSortBy] = useState("newest");
 
-  // ---- Stat strip: derived from ALL transactions, like the Dashboard ----
-  const income = total(transactions.filter((t) => t.type === "income"));
-  const expenses = total(transactions.filter((t) => t.type === "expense"));
-  const accountCount = new Set(transactions.map((t) => t.account)).size;
-  const spendingPercent = Math.round((expenses / MONTHLY.spendingCap) * 100);
-
-  // ---- Dropdown options come from the data itself ----
-  const accountNames = [...new Set(transactions.map((t) => t.account))].filter(
-    Boolean,
+  // Summary totals use only the preferred reporting currency.
+  // The ledger below still displays transactions from both currencies.
+  const reportingTransactions = transactions.filter(
+    (t) => t.currency === preferredCurrency,
   );
+  const incomeTransactions = reportingTransactions.filter(
+    (t) => t.type === "income",
+  );
+  const expenseTransactions = reportingTransactions.filter(
+    (t) => t.type === "expense",
+  );
+  const income = total(incomeTransactions);
+  const expenses = total(expenseTransactions);
+  const netCashFlow = income - expenses;
+
+  // Keep a legacy account name only when a transaction has no linked account ID.
+  function getAccountName(transaction) {
+    if (transaction.accountId) {
+      const linkedAccount = accounts.find(
+        (item) => item.id === transaction.accountId,
+      );
+      return linkedAccount?.name ?? "Unknown account";
+    }
+    return transaction.account || "Unassigned";
+  }
+
+  const accountNames = [...new Set(transactions.map(getAccountName))].filter(
+    (name) => name !== "Unassigned",
+  );
+
+  const reportingAccountCount = new Set(
+    reportingTransactions.map(getAccountName).filter((name) => name !== "Unassigned"),
+  ).size;
+
   const categories = [...new Set(transactions.map((t) => t.category))];
 
   // ---- Table rows: every filter must pass ----
   const visible = transactions.filter((t) => {
     const text =
-      `${t.name} ${t.category} ${t.account} ${t.amount}`.toLowerCase();
+      `${t.name} ${t.category} ${getAccountName(t)} ${t.amount}`.toLowerCase();
     return (
       text.includes(query.toLowerCase()) &&
-      (account === "all" || t.account === account) &&
+      (account === "all" || getAccountName(t) === account) &&
       (category === "all" || t.category === category) &&
       (type === "all" || t.type === type)
     );
@@ -139,18 +163,6 @@ function Transactions({
       window.alert(error.message || "Failed to delete transaction.");
     }
   }
-  function getAccountName(transaction) {
-    if (transaction.accountId) {
-      const linkedAccount = accounts.find(
-        (account) => account.id === transaction.accountId,
-      );
-
-      return linkedAccount?.name ?? "Unknown account";
-    }
-
-    return transaction.account || "Unassigned";
-  }
-
   return (
     <>
       <div className="welcome">
@@ -181,44 +193,46 @@ function Transactions({
           label="Gross Activity"
           icon={<IconAnalytics size={14} />}
           iconClass="is-blue"
-          value={formatCurrency(income + expenses)}
+          value={formatMoney(income + expenses, preferredCurrency)}
         >
-          <strong>{transactions.length} total posted</strong>
-          <span>• Across {accountCount} accounts</span>
+          <strong>{reportingTransactions.length} {preferredCurrency} transactions</strong>
+          <span>• Across {reportingAccountCount} named accounts</span>
         </StatCard>
 
         <StatCard
           label="Net Inflows"
           icon={<IconTrendUp size={14} />}
           iconClass="is-dark"
-          value={`+${formatCurrency(income)}`}
+          value={`+${formatMoney(income, preferredCurrency)}`}
           valueClass="is-income"
         >
-          <span className="badge badge--success">+18.4%</span>
-          <span>vs last cycle</span>
+          <span className="badge badge--success">
+            {incomeTransactions.length} inflows
+          </span>
+          <span>All recorded dates</span>
         </StatCard>
 
         <StatCard
           label="Total Outflows"
           icon={<IconTrendUp size={14} />}
           iconClass="is-red"
-          value={`-${formatCurrency(expenses)}`}
+          value={`-${formatMoney(expenses, preferredCurrency)}`}
         >
-          <span className="badge badge--info">{spendingPercent}% of limit</span>
-          <span>
-            {spendingPercent <= 100 ? "Budget on track" : "Over budget"}
+          <span className="badge badge--info">
+            {expenseTransactions.length} outflows
           </span>
+          <span>All recorded dates</span>
         </StatCard>
 
-        {/* Hardcoded until transactions get a `status` field (backend step). */}
         <StatCard
-          label="Pending Settlement"
-          icon={<IconBolt size={14} />}
+          label="Net Cash Flow"
+          icon={<IconAnalytics size={14} />}
           iconClass="is-blue"
-          value="$142.50"
+          value={formatMoney(netCashFlow, preferredCurrency)}
+          valueClass={netCashFlow >= 0 ? "is-income" : ""}
         >
-          <span className="badge badge--info">2 Pending</span>
-          <span>Settling 24-48 hrs</span>
+          <span>Income minus expenses</span>
+          <span>All recorded dates</span>
         </StatCard>
       </div>
 
@@ -307,7 +321,9 @@ function Transactions({
                     className={`ledger__right ledger__amount${t.type === "income" ? " is-income" : ""}`}
                   >
                     {t.type === "income" ? "+" : "-"}
-                    {formatCurrency(t.amount)}
+                    {["USD", "LKR"].includes(t.currency)
+                      ? formatMoney(t.amount, t.currency)
+                      : `${Number(t.amount).toFixed(2)} (currency unclassified)`}
                   </td>
                   <td>
                     <button type="button" onClick={() => startEditing(t)}>
@@ -355,7 +371,7 @@ function Transactions({
             </label>
 
             <label>
-              Amount
+              Amount ({editingTransaction.currency || "currency unclassified"})
               <input
                 type="number"
                 min="0.01"
@@ -398,19 +414,18 @@ function Transactions({
                     ...editingTransaction,
                     accountId: selectedAccount?.id ?? null,
                     account: selectedAccount?.name ?? null,
+                    currency: selectedAccount?.currency,
                   });
                 }}
                 required
               >
                 <option value="">Select an account</option>
 
-                {accounts
-                  .filter((account) => account.currency === "USD")
-                  .map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.name} (USD)
-                    </option>
-                  ))}
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name} ({account.currency})
+                  </option>
+                ))}
               </select>
             </label>
 

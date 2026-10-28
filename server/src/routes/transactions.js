@@ -1,197 +1,131 @@
 import { Router } from "express";
 import mongoose from "mongoose";
 import Transaction from "../models/Transaction.js";
-import { requireAuth } from "../middleware/auth.js";
 import Account from "../models/Account.js";
+import { requireAuth } from "../middleware/auth.js";
 
 const router = Router();
-
-// All transaction routes require login.
 router.use(requireAuth);
-
-// GET: Only the logged-in user's transactions.
+const fieldsAllowed = new Set([
+  "name",
+  "category",
+  "type",
+  "amount",
+  "date",
+  "accountId",
+  "account",
+  "currency",
+]);
+const currencies = ["USD", "LKR"];
+async function ownedAccount(id, userId) {
+  if (!mongoose.isValidObjectId(id)) return null;
+  return Account.findOne({ _id: id, userId });
+}
+function mismatch(body, account) {
+  return Object.hasOwn(body, "currency") && body.currency !== account.currency;
+}
 router.get("/", async (req, res) => {
   try {
-    const transactions = await Transaction.find({
-      userId: req.userId,
-    }).sort({ date: -1, createdAt: -1 });
-
-    res.json(transactions);
+    res.json(
+      await Transaction.find({ userId: req.userId }).sort({
+        date: -1,
+        createdAt: -1,
+      }),
+    );
   } catch {
     res.status(500).json({ error: "Failed to load transactions." });
   }
 });
-
-// POST: Create a transaction belonging to this user.
 router.post("/", async (req, res) => {
   try {
-    const { name, category, account, accountId, type, amount, date } = req.body;
-
-    const created = await Transaction.create({
-      name,
-      category,
-      account,
-      accountId: accountId ?? null,
-      type,
-      amount,
-      date,
+    const body = req.body ?? {};
+    if (!body.accountId)
+      return res.status(400).json({ error: "Select an account." });
+    const account = await ownedAccount(body.accountId, req.userId);
+    if (!account || !currencies.includes(account.currency))
+      return res
+        .status(400)
+        .json({ error: "Invalid or inaccessible account." });
+    if (mismatch(body, account))
+      return res
+        .status(400)
+        .json({ error: "Currency must match the selected account." });
+    // Validate BEFORE creation. Account name/currency are authoritative.
+    const saved = await Transaction.create({
+      userId: req.userId,
+      name: body.name,
+      category: body.category,
+      type: body.type,
+      amount: body.amount,
+      date: body.date,
+      accountId: account._id,
+      account: account.name,
+      currency: account.currency,
+    });
+    res.status(201).json(saved);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+router.patch("/:id", async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id))
+    return res.status(400).json({ error: "Invalid transaction ID." });
+  const body = req.body ?? {};
+  if (
+    !Object.keys(body).length ||
+    Object.keys(body).some((k) => !fieldsAllowed.has(k))
+  )
+    return res.status(400).json({ error: "Invalid or empty update request." });
+  try {
+    const existing = await Transaction.findOne({
+      _id: req.params.id,
       userId: req.userId,
     });
-    if (accountId != null) {
-      if (!mongoose.isValidObjectId(accountId)) {
-        return res.status(400).json({
-          error: "Invalid account ID.",
-        });
-      }
-
-      const ownedAccount = await Account.findOne({
-        _id: accountId,
-        userId: req.userId,
-      });
-      if (ownedAccount.currency !== "USD") {
-        return res.status(400).json({
-          error:
-            "Only USD accounts are currently supported for transactions. LKR support will be added later.",
-        });
-      }
-      if (!ownedAccount) {
-        return res.status(400).json({
-          error: "Account not found or does not belong to you.",
-        });
-      }
-    }
-    res.status(201).json(created);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-// PATCH: Update a transaction belonging to the logged-in user.
-router.patch("/:id", async (req, res) => {
-  if (!mongoose.isValidObjectId(req.params.id)) {
-    return res.status(400).json({
-      error: "Invalid transaction ID.",
+    if (!existing)
+      return res.status(404).json({ error: "Transaction not found." });
+    const id = Object.hasOwn(body, "accountId")
+      ? body.accountId
+      : existing.accountId;
+    const account = await ownedAccount(id, req.userId);
+    if (!account || !currencies.includes(account.currency))
+      return res
+        .status(400)
+        .json({ error: "Select a valid account before updating." });
+    if (mismatch(body, account))
+      return res
+        .status(400)
+        .json({ error: "Currency must match the selected account." });
+    const changes = {};
+    for (const key of ["name", "category", "type", "amount", "date"])
+      if (Object.hasOwn(body, key)) changes[key] = body[key];
+    Object.assign(changes, {
+      accountId: account._id,
+      account: account.name,
+      currency: account.currency,
     });
-  }
-
-  try {
-    const allowedFields = [
-      "name",
-      "category",
-      "account",
-      "type",
-      "amount",
-      "date",
-    ];
-
-    const fields = Object.keys(req.body ?? {});
-
-    if (
-      fields.length === 0 ||
-      fields.some((field) => !allowedFields.includes(field))
-    ) {
-      return res.status(400).json({
-        error: "Invalid or empty update request.",
-      });
-    }
-
-    const changes = Object.fromEntries(Object.entries(req.body));
-    if (changes.accountId != null) {
-      if (!mongoose.isValidObjectId(changes.accountId)) {
-        return res.status(400).json({
-          error: "Invalid account ID.",
-        });
-      }
-
-      const ownedAccount = await Account.findOne({
-        _id: changes.accountId,
-        userId: req.userId,
-      });
-
-      if (!ownedAccount) {
-        return res.status(400).json({
-          error: "Account not found or does not belong to you.",
-        });
-      }
-
-      if (ownedAccount.currency !== "USD") {
-        return res.status(400).json({
-          error: "Only USD accounts are currently supported for transactions.",
-        });
-      }
-    }
-    if (req.body.currency !== undefined) {
-      const existingAccount = await Account.findOne({
-        _id: req.params.id,
-        userId: req.userId,
-      });
-
-      if (!existingAccount) {
-        return res.status(404).json({
-          error: "Account not found.",
-        });
-      }
-
-      if (req.body.currency !== existingAccount.currency) {
-        const linkedCount = await Transaction.countDocuments({
-          userId: req.userId,
-          accountId: existingAccount._id,
-        });
-
-        if (linkedCount > 0) {
-          return res.status(409).json({
-            error:
-              "Cannot change account currency while transactions are linked to it.",
-          });
-        }
-      }
-    }
     const updated = await Transaction.findOneAndUpdate(
-      {
-        _id: req.params.id,
-        userId: req.userId,
-      },
+      { _id: req.params.id, userId: req.userId },
       { $set: changes },
-      {
-        returnDocument: "after",
-        runValidators: true,
-      },
+      { returnDocument: "after", runValidators: true },
     );
-
-    if (!updated) {
-      return res.status(404).json({
-        error: "Transaction not found.",
-      });
-    }
-
     res.json(updated);
-  } catch (err) {
-    res.status(400).json({
-      error: err.message,
-    });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
   }
 });
-
-// DELETE: Only delete a transaction the user owns.
 router.delete("/:id", async (req, res) => {
-  if (!mongoose.isValidObjectId(req.params.id)) {
+  if (!mongoose.isValidObjectId(req.params.id))
     return res.status(400).json({ error: "Invalid transaction ID." });
-  }
-
   try {
     const deleted = await Transaction.findOneAndDelete({
       _id: req.params.id,
       userId: req.userId,
     });
-
-    if (!deleted) {
+    if (!deleted)
       return res.status(404).json({ error: "Transaction not found." });
-    }
-
     res.status(204).end();
   } catch {
-    res.status(500).json({ error: "Failed to delete transaction." });
+    res.status(500).json({ error: "Could not delete transaction." });
   }
 });
-
 export default router;

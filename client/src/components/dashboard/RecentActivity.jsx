@@ -1,61 +1,44 @@
-import { IconArrowRight } from "../common/Icon.jsx";
-import { formatCurrency, formatShortDate } from "../../utils/format.js";
-import CategoryIcon from "../common/CategoryIcon.jsx";
-
-function RecentActivity({ transactions, onViewAll }) {
-  const recent = transactions.slice(0, 5);
-
+import { formatDate } from "../../utils/format.js";
+import { formatMoney } from "../../utils/currency.js";
+function RecentActivity({ transactions = [], onViewAll }) {
   return (
     <section className="card">
       <div className="card__header">
-        <h2 className="card__title">Recent Activity</h2>
-        <span className="live-dot" title="Live" />
+        <div>
+          <h2 className="card__title">Recent Activity</h2>
+          <p className="card__sub">Latest recorded transactions</p>
+        </div>
+        <button type="button" className="link-btn" onClick={onViewAll}>
+          View all
+        </button>
       </div>
-
-      <ul className="activity-list">
-        {recent.map((t) => {
-          const isIncome = t.type === "income";
-          return (
-            <li className="activity-item" key={t.id}>
-              <div className="activity-item__left">
-                <span
-                  className={`activity-item__icon${isIncome ? " is-income" : ""}`}
-                >
-                  <CategoryIcon category={t.category} size={20} />
-                </span>
-                <div>
-                  <p className="activity-item__name">{t.name}</p>
-                  <p className="activity-item__meta">
-                    {formatShortDate(t.date)} • {t.category}
-                  </p>
-                </div>
-              </div>
-              <div className="activity-item__right">
-                <p
-                  className={`activity-item__amount${isIncome ? " is-income" : ""}`}
-                >
-                  {isIncome ? "+" : "-"}
-                  {formatCurrency(t.amount)}
-                </p>
-                <p className="activity-item__meta">
-                  {isIncome ? "Cleared" : t.account}
-                </p>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-
-      <button
-        type="button"
-        className="link-btn link-btn--footer"
-        onClick={onViewAll}
-      >
-        View all transactions in ledger
-        <IconArrowRight size={16} />
-      </button>
+      <div className="ledger-scroll">
+        <table className="ledger">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Transaction</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {transactions.slice(0, 5).map((t) => (
+              <tr key={t.id}>
+                <td>{formatDate(t.date)}</td>
+                <td>{t.name}</td>
+                <td>
+                  {t.type === "income" ? "+" : "−"}
+                  {formatMoney(t.amount, t.currency)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {transactions.length === 0 && (
+        <p className="card__sub">No transactions in this period.</p>
+      )}
     </section>
   );
 }
-
 export default RecentActivity;

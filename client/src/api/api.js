@@ -128,4 +128,11 @@ export const api = {
     request(`/savings-goals/${goalId}/contributions/${id}`, {
       method: "DELETE",
     }),
+    getFinancialSettings: () => request("/settings"),
+
+updateFinancialSettings: (changes) =>
+  request("/settings", {
+    method: "PATCH",
+    body: JSON.stringify(changes),
+  }),
 };

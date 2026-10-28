@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { formatCurrency, todayISO } from "../utils/format.js";
+import { todayISO } from "../utils/format.js";
+import { formatMoney } from "../utils/currency.js";
 
 const sum = (items) =>
   items.reduce((total, item) => total + Number(item.amount || 0), 0);
@@ -49,21 +50,6 @@ function InsightCard({
   );
 }
 
-const DISCRETIONARY_CATEGORIES = new Set([
-  "shopping",
-  "entertainment",
-  "food & dining",
-  "dining",
-  "restaurants",
-  "travel",
-  "hobbies",
-  "lifestyle",
-  "subscriptions",
-  "leisure",
-  "food & gourmet dining",
-  "lifestyle & discretionary",
-]);
-
 function getPeriodBounds(monthKey, period) {
   const [year, month] = monthKey.split("-").map(Number);
   const first = new Date(Date.UTC(year, month - 1, 1));
@@ -105,7 +91,8 @@ const ALLOCATION_COLORS = [
   "#6A5ACD",
 ];
 
-function CategoryAllocation({ rows, total, type }) {
+function CategoryAllocation({ rows, total, type, currency = "LKR" }) {
+  const formatCurrency = (amount) => formatMoney(amount, currency);
   // An SVG circle has a circumference of 2 * PI * r.
   const radius = 76;
   const circumference = 2 * Math.PI * radius;
@@ -193,7 +180,12 @@ function CategoryAllocation({ rows, total, type }) {
   );
 }
 
-function Analytics({ transactions = [] }) {
+function Analytics({ transactions = [], settings, preferredCurrency = "LKR" }) {
+  const formatCurrency = (amount) => formatMoney(amount, preferredCurrency);
+  // Keep all figures in one currency even if the caller passes the full ledger.
+  const currencyTransactions = transactions.filter(
+    (item) => item.currency === preferredCurrency,
+  );
   const currentMonth = todayISO().slice(0, 7);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [categoryType, setCategoryType] = useState("expense");
@@ -202,7 +194,7 @@ function Analytics({ transactions = [] }) {
   const availableMonths = [
     ...new Set([
       currentMonth,
-      ...transactions
+      ...currencyTransactions
         .map((item) => String(item.date || "").slice(0, 7))
         .filter((m) => /^\d{4}-\d{2}$/.test(m)),
     ]),
@@ -211,10 +203,17 @@ function Analytics({ transactions = [] }) {
     .reverse();
 
   const bounds = getPeriodBounds(selectedMonth, period);
-  const selected = transactions.filter((item) => {
+  const selected = currencyTransactions.filter((item) => {
     const date = String(item.date || "").slice(0, 7);
     return date >= bounds.startKey && date < bounds.endKey;
   });
+  const savingsTarget = settings?.savingsTarget ?? 30;
+  const discretionaryLimit = settings?.discretionaryLimit ?? 30;
+  const discretionaryCategories = new Set(
+    (settings?.discretionaryCategories ?? []).map((category) =>
+      category.trim().toLowerCase(),
+    ),
+  );
   const income = sum(selected.filter((item) => item.type === "income"));
   const expenses = sum(selected.filter((item) => item.type === "expense"));
   const monthlyBurn = expenses / bounds.months;
@@ -223,7 +222,7 @@ function Analytics({ transactions = [] }) {
     selected.filter(
       (item) =>
         item.type === "expense" &&
-        DISCRETIONARY_CATEGORIES.has(
+        discretionaryCategories.has(
           String(item.category || "")
             .trim()
             .toLowerCase(),
@@ -241,7 +240,7 @@ function Analytics({ transactions = [] }) {
     .toISOString()
     .slice(0, 7);
   const priorExpenses = sum(
-    transactions.filter(
+    currencyTransactions.filter(
       (item) =>
         item.type === "expense" &&
         String(item.date || "").slice(0, 7) >= priorStart &&
@@ -267,7 +266,7 @@ function Analytics({ transactions = [] }) {
   );
   const months = previousMonths(selectedMonth);
   const monthlyTotals = months.map((key) => {
-    const items = transactions.filter((item) =>
+    const items = currencyTransactions.filter((item) =>
       String(item.date || "").startsWith(key),
     );
     return {
@@ -365,17 +364,17 @@ function Analytics({ transactions = [] }) {
           badge={
             savingsRate === null
               ? "No income"
-              : `${savingsRate - 40 >= 0 ? "+" : ""}${(savingsRate - 40).toFixed(1)} pp`
+              : `${savingsRate - savingsTarget >= 0 ? "+" : ""}${(savingsRate - savingsTarget).toFixed(1)} pp`
           }
           badgeTone={
             savingsRate === null
               ? ""
-              : savingsRate >= 40
+              : savingsRate >= savingsTarget
                 ? "positive"
                 : "negative"
           }
           progress={savingsRate === null ? 0 : savingsRate}
-          footer="Illustrative savings-rate target: 40%"
+          footer={`Your savings-rate target: ${savingsTarget}%`}
         />
         <InsightCard
           label="Runway Projection"
@@ -393,18 +392,18 @@ function Analytics({ transactions = [] }) {
           badge={
             discretionaryRatio === null
               ? "No spending"
-              : discretionaryRatio <= 30
+              : discretionaryRatio <= discretionaryLimit
                 ? "Within guide"
                 : "Above guide"
           }
           badgeTone={
             discretionaryRatio === null
               ? ""
-              : discretionaryRatio <= 30
+              : discretionaryRatio <= discretionaryLimit
                 ? "positive"
                 : "negative"
           }
-          footer={`Illustrative 30% guide · ${formatCurrency(discretionarySpending)} tagged discretionary`}
+          footer={`${discretionaryLimit}% personal ceiling · ${formatCurrency(discretionarySpending)} discretionary spending`}
         />
       </div>
 
@@ -499,18 +498,16 @@ function Analytics({ transactions = [] }) {
             rows={categoryTotals}
             total={categoryTotal}
             type={categoryType}
+            currency={preferredCurrency}
           />
         </section>
       </div>
 
       <p className="analytics-note">
-        Based on the signed-in user's saved transactions. Category
-        classification for discretionary spending is provisional and should be
-        user-configurable. The savings goal (40%) and discretionary limit (30%)
-        are illustrative guides. Runway is intentionally unavailable until
-        verified liquid-reserve data is added. Monthly averages divide by the
-        number of calendar months in the selected period, including months with
-        no transactions.
+        Based on the signed-in user's saved transactions and financial settings.
+        Savings and discretionary benchmarks follow your saved preferences.
+        Runway remains unavailable until reliable liquid-reserve data is
+        integrated. Monthly averages include months with no transactions.
       </p>
     </>
   );

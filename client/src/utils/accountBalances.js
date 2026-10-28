@@ -1,25 +1,17 @@
 export function calculateAccountBalance(account, transactions) {
-  const openingBalance = Number(account.openingBalance) || 0;
-
-  const linkedTransactions = transactions.filter(
-    (transaction) => transaction.accountId === account.id,
+  const opening = Number(account.openingBalance) || 0;
+  return (
+    opening +
+    transactions
+      .filter(
+        (t) => t.accountId === account.id && t.currency === account.currency,
+      )
+      .reduce(
+        (sum, t) =>
+          sum +
+          (t.type === "income" ? 1 : t.type === "expense" ? -1 : 0) *
+            Number(t.amount || 0),
+        0,
+      )
   );
-
-  const changes = linkedTransactions.reduce((total, transaction) => {
-    const amount = Number(transaction.amount);
-
-    if (!Number.isFinite(amount)) return total;
-
-    if (transaction.type === "income") {
-      return total + amount;
-    }
-
-    if (transaction.type === "expense") {
-      return total - amount;
-    }
-
-    return total;
-  }, 0);
-
-  return openingBalance + changes;
 }
