@@ -2434,3 +2434,403 @@ a {
     padding: 16px;
   }
 }
+
+/* =========================================
+   BudgetIQ — Transactions UI Polish
+   ========================================= */
+
+/* Filter bar layout */
+.filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 16px;
+}
+
+/* Modern filter dropdowns */
+.filters select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: #f8faff;
+  border: 1px solid #dbe4f0;
+  border-radius: 9px;
+  padding: 10px 32px 10px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #253858;
+  cursor: pointer;
+  min-height: 38px;
+
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23526784' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.filters select:hover {
+  border-color: #93b4ea;
+}
+
+.filters select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+/* Search input */
+.filters .search {
+  min-height: 38px;
+  border-radius: 9px;
+  background: #f8faff;
+  border: 1px solid #dbe4f0;
+}
+
+/* Clear filters action */
+.filters .link-btn {
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2563eb;
+  transition: background-color 0.2s ease;
+}
+
+.filters .link-btn:hover {
+  background: #eff6ff;
+}
+
+/* Transaction Edit button */
+.ledger td button:not(.ledger__delete) {
+  background: #eef4ff;
+  color: #1d4ed8;
+  border: 1px solid #c7dcff;
+  border-radius: 7px;
+  padding: 7px 13px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ledger td button:not(.ledger__delete):hover {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+/* Transaction Delete button */
+.ledger td .ledger__delete {
+  background: #fff1f2;
+  color: #dc2626;
+  border: 1px solid #fecdd3;
+  border-radius: 7px;
+  padding: 7px 13px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 6px;
+  transition: all 0.2s ease;
+}
+
+.ledger td .ledger__delete:hover {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #dc2626;
+}
+
+/* Subtle row interaction */
+.ledger tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.ledger tbody tr:hover {
+  background-color: #f4f8ff;
+}
+
+/* Improve keyboard accessibility */
+.ledger button:focus-visible,
+.filters button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* Keep controls usable on smaller screens */
+@media (max-width: 768px) {
+  .filters {
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .filters select {
+    flex: 1 1 145px;
+    min-width: 0;
+  }
+
+  .ledger td button:not(.ledger__delete),
+  .ledger td .ledger__delete {
+    padding: 6px 9px;
+  }
+}
+
+/* BudgetIQ — Subtle fintech background polish */
+
+/* Soft layered background across the application */
+body {
+  background: #f4f7fd;
+}
+
+.app-main,
+.main-content {
+  background:
+    radial-gradient(
+      ellipse at 90% 5%,
+      rgba(59, 130, 246, 0.07),
+      transparent 48%
+    ),
+    linear-gradient(150deg, #f8faff 0%, #f3f6fc 60%, #eef3fb 100%);
+}
+
+/* Give white financial cards more definition */
+.card,
+.kpi-card {
+  border: 1px solid rgba(210, 222, 241, 0.75);
+  box-shadow: 0 3px 14px rgba(25, 48, 85, 0.035);
+  transition: box-shadow 0.2s ease;
+}
+
+.card:hover,
+.kpi-card:hover {
+  box-shadow: 0 7px 22px rgba(25, 48, 85, 0.07);
+}
+.envelope-controls > .ledger__delete:hover:not(:disabled) {
+  background: #dc2626;
+  color: #fff;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .envelope-controls {
+    align-items: flex-start;
+  }
+
+  .envelope-controls form {
+    width: 100%;
+  }
+
+  .envelope-controls input[type="number"] {
+    flex: 1;
+    min-width: 80px;
+  }
+}
+
+/* ===== BudgetIQ Budget Controls — Final Styling ===== */
+
+.envelope-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 8px 4px;
+  margin-top: 10px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.envelope-controls form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.envelope-controls form label {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.envelope-controls form input[type="number"] {
+  width: 100px;
+  height: 36px;
+  padding: 7px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8faff;
+  color: #14233b;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.envelope-controls form input[type="number"]:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.envelope-controls form button[type="submit"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 8px 16px;
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  background-color: #2563eb;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.envelope-controls form button[type="submit"]:hover:not(:disabled) {
+  background-color: #1d4ed8;
+}
+
+.envelope-controls form button[type="submit"]:disabled {
+  background-color: #e8effa;
+  border-color: #d5e1f0;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.envelope-controls .envelope-controls__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.envelope-controls .envelope-controls__check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #2563eb;
+}
+
+.envelope-controls button.ledger__delete {
+  padding: 8px 14px;
+  min-height: 36px;
+  border: 1px solid #fecdd3;
+  border-radius: 8px;
+  background-color: #fff1f2;
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.envelope-controls button.ledger__delete:hover:not(:disabled) {
+  background-color: #dc2626;
+  color: #fff;
+}
+
+/* ==========================================
+   BudgetIQ — Create Budget Envelope Form
+   ========================================== */
+
+.budget-form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+/* Category and group dropdowns */
+.budget-form select {
+  appearance: none;
+  -webkit-appearance: none;
+
+  min-height: 40px;
+  min-width: 165px;
+  padding: 10px 34px 10px 13px;
+
+  background-color: #f8faff;
+  border: 1px solid #d7e2f1;
+  border-radius: 9px;
+
+  color: #253858;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23526784' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+/* Monthly limit input */
+.budget-form input[type="number"] {
+  min-height: 40px;
+  width: 160px;
+  padding: 10px 13px;
+
+  background: #f8faff;
+  border: 1px solid #d7e2f1;
+  border-radius: 9px;
+
+  color: #253858;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+/* Focus and hover */
+.budget-form select:hover,
+.budget-form input:hover {
+  border-color: #93b4ea;
+}
+
+.budget-form select:focus,
+.budget-form input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+/* Create Envelope button */
+.budget-form button.btn-dark {
+  min-height: 40px;
+  padding: 10px 18px;
+
+  background: #14233b;
+  color: #fff;
+  border: 1px solid #14233b;
+  border-radius: 9px;
+
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.budget-form button.btn-dark:hover:not(:disabled) {
+  background: #2563eb;
+  border-color: #2563eb;
+  transform: translateY(-1px);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 600px) {
+  .budget-form select,
+  .budget-form input[type="number"] {
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  .budget-form button.btn-dark {
+    width: 100%;
+  }
+}
